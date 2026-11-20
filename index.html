@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Langyu — каталог автодеталей</title>
+<style>
+*{box-sizing:border-box} body{margin:0;background:#f2f4f5;color:#182421;font:16px system-ui,sans-serif} button,input,select{font:inherit} button,select{cursor:pointer} button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #27987e;outline-offset:3px}
+.bar{background:#12231f;color:white}.bar div,main{max-width:1240px;margin:auto;padding:18px 28px}.bar strong{font-size:23px;letter-spacing:.15em}.bar span{margin-left:18px;color:#b8cdc6;font-size:14px}
+.bar div{display:flex;align-items:center;flex-wrap:wrap;gap:8px}.bar span{margin-left:8px}#settings-open{margin-left:auto;background:#e2f0eb;color:#12231f;border:0;border-radius:8px;padding:9px 12px}#settings{max-width:575px}#pricing-form label{display:grid;gap:6px}#pricing-form button{background:#12231f;color:#fff;border:0;border-radius:8px;padding:10px 12px;margin:0 3px 6px 0}#pricing-form h3{margin-top:24px}
+h1{font-size:clamp(34px,6vw,64px);letter-spacing:-.065em;line-height:1;margin:30px 0 12px} h2{letter-spacing:-.035em} .intro{color:#53635e;margin:0 0 28px}.filters{display:grid;grid-template-columns:1fr auto;gap:12px}input,select{min-width:0;background:white;border:1px solid #ccd5d2;border-radius:8px;padding:13px;color:#182421} .count{color:#53635e;margin:18px 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(245px,1fr));gap:18px}.card{background:white;border:1px solid #dbe2df;border-radius:12px;overflow:hidden;text-align:left;padding:0;color:inherit;transition:box-shadow .2s,border-color .2s;display:flex;flex-direction:column}.card:hover{border-color:#27987e;box-shadow:0 8px 26px #183d2820}.card img{width:100%;aspect-ratio:4/3;object-fit:cover;background:#e4ebe8}.summary{padding:15px;display:grid;gap:8px;width:100%}.summary b{font-size:21px;color:#125d4c}.summary small{color:#53635e}.name{min-height:3em}
+.card-costs{display:grid;gap:4px;padding-top:8px;border-top:1px solid #dbe2df;font-size:14px}.card-costs strong{font-size:16px;color:#125d4c}
+dialog{border:0;border-radius:14px;padding:0;width:min(960px,calc(100% - 24px));max-height:90vh;color:inherit;box-shadow:0 20px 80px #0005}dialog::backdrop{background:#12231fbb}.modal{padding:24px}.close{position:sticky;top:8px;float:right;z-index:1;background:#12231f;color:white;border:0;border-radius:8px;padding:9px 13px}.detail{clear:both;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px}.photo{width:100%;max-height:420px;object-fit:contain;background:#eef1f0;border-radius:8px}.thumbs{display:flex;flex-wrap:wrap;gap:7px;margin-top:8px}.thumbs button{padding:0;border:2px solid transparent;border-radius:7px;overflow:hidden;background:white}.thumbs button[aria-pressed=true]{border-color:#287e6c}.thumbs img{width:61px;height:61px;object-fit:cover;display:block}.price{font-size:28px;font-weight:700;color:#125d4c}.desc{white-space:pre-wrap;overflow-wrap:anywhere}.description-img{display:block;width:min(100%,740px);margin:12px auto;border-radius:6px}dl{margin:0}dt{font-weight:650}dd{margin:3px 0 12px;overflow-wrap:anywhere}a{color:#125d4c}details{border-top:1px solid #dbe2df;padding:12px 0}summary{cursor:pointer;font-weight:650}
+@media(max-width:640px){.bar div,main{padding:14px}.filters,.detail{grid-template-columns:1fr}.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.summary{padding:10px}.modal{padding:14px}}
+</style>
+<script defer src="products.js"></script>
+<script defer src="ru.js"></script>
+<script defer src="localize.js"></script>
+<script defer src="settings.js"></script>
+<script defer src="pricing.js"></script>
+</head>
+<body>
+<header class="bar"><div><strong>LANGYU</strong><span>Автодетали · локальная витрина</span> <button id="settings-open" type="button">Настройки цен</button></div></header>
+<main>
+ <h1>Каталог автодеталей</h1>
+ <p class="intro">Каталог продавца Langyu на 1688</p>
+ <div class="filters"><input id="search" type="search" aria-label="Поиск товаров" placeholder="Название, модель авто или ID"><select id="order" aria-label="Сортировка"><option value="">По умолчанию</option><option value="asc">Цена по возрастанию</option><option value="desc">Цена по убыванию</option></select></div>
+ <p id="count" class="count" aria-live="polite"></p>
+ <section id="grid" class="grid" aria-label="Товары"></section>
+ <p><button id="more" type="button" hidden>Показать ещё</button></p>
+</main>
+<dialog id="dialog" aria-labelledby="product-title"><div class="modal"><button class="close" type="button">Закрыть</button><div id="product"></div></div></dialog>
+<dialog id="settings" aria-labelledby="settings-title"><div class="modal">
+ <form id="pricing-form">
+  <h2 id="settings-title">Курс и доставка</h2>
+  <p><label>Рублей за 1 юань <input name="rate" type="number" min="0" step="any" required></label></p>
+  <h3>Доставка на одну единицу товара</h3>
+  <p><label>Фиксированная часть, ₽ <input name="flat" type="number" min="0" step="any" required></label></p>
+  <p><label>Тариф за кг, ₽ <input name="perKg" type="number" min="0" step="any" required></label></p>
+  <p><label>Делитель объёмного веса, см³/кг <input name="divisor" type="number" min="0" step="any" required></label></p>
+  <p>Введите делитель перевозчика. При нуле используется заявленный вес упаковки. При нулевом тарифе за кг применяется только фиксированная часть.</p>
+  <button type="submit">Применить</button> <button id="settings-close" type="button">Закрыть</button>
+  <button id="settings-export" type="button">Скачать общие настройки</button>
+  <p id="settings-status" role="status"></p>
+ </form>
+</div></dialog>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+ const $ = id => document.getElementById(id);
+ const grid=$('grid'), search=$('search'), order=$('order'), dialog=$('dialog');
+ const settings=$('settings'), form=$('pricing-form');
+ let config=window.pricing.load();
+ let shown=24;
+ const {translate, title: ruTitle, dropship, shop, labels}=window.catalogRu;
+ const translation = row => window.ru[row.id] ?? [ruTitle(row),'','',[],null,null];
+ const money = value => new Intl.NumberFormat('ru-RU',{maximumFractionDigits:2}).format(value);
+ const range = (min,max,format) => min===max ? format(min) : format(min)+'–'+format(max);
+ const rub = value => money(Math.round(value))+' ₽';
+ const amount = value => config.rate ? rub(value*config.rate) : '¥'+money(value);
+ const limits = row => [row.price_min ?? row.price, row.price_max ?? row.price_min ?? row.price];
+ const price = row => range(...limits(row),amount);
+ const packagesFor = row => row.package_sizes?.length ? row.package_sizes : [{weight_g:row.unit_weight_kg*1000}];
+ const hasDelivery = () => Boolean(config.flat || config.perKg);
+ const costRange = values => range(Math.min(...values),Math.max(...values),rub);
+ function cardCosts(row){
+   const costs=el('span',null,'card-costs');
+   if(!hasDelivery()){
+     costs.append(el('span','Доставка: тариф не задан')); return costs;
+   }
+   const options=packagesFor(row).map(pack=>{
+     const shipping=window.pricing.delivery(pack,config);
+     const skuPrice=pack.sku ? row.skus?.find(sku=>sku.name===pack.sku)?.price : null;
+     const prices=skuPrice==null?limits(row):[skuPrice];
+     return {shipping,prices};
+   });
+   if(options.some(option=>option.shipping===null)){
+     costs.append(el('span','Доставка: уточните вес или габариты')); return costs;
+   }
+   costs.append(el('span','Доставка ≈ '+costRange(options.map(option=>option.shipping))));
+   if(config.rate) {
+     const totals=options.flatMap(({prices,shipping})=>prices.map(value=>value*config.rate+shipping));
+     costs.append(el('strong','С доставкой ≈ '+costRange(totals)));
+   } else costs.append(el('span','Для итога задайте курс юаня'));
+   return costs;
+ }
+ function el(tag, text, className) {
+   const node=document.createElement(tag);
+   if(text != null) node.textContent=text;
+   if(className) node.className=className;
+   return node;
+ }
+ function photo(src, alt, cls) {
+   const image=el('img',null,cls);
+   image.src=src; image.alt=alt; image.loading='lazy'; return image;
+ }
+ function imageLink(src, alt, cls) {
+   const link=el('a'); link.href=src; link.target='_blank'; link.rel='noopener';
+   link.append(photo(src,alt,cls)); return link;
+ }
+ function details(title, content) {
+   const section=el('details'); section.append(el('summary',title),content); return section;
+ }
+ function fields(values){
+   const list=el('dl');
+   for(const [label,value] of values){
+     if(value==null||value===''||(typeof value==='object'&&!Object.keys(value).length)) continue;
+     const text=Array.isArray(value)?value.map(translate).join('\n'):typeof value==='boolean'?(value?'Да':'Нет'):translate(value);
+     list.append(el('dt',label),el('dd',text,'desc'));
+   }
+   return list;
+ }
+ function open(row) {
+   const [name, fits, note, skuNames, article, translatedDescription] = translation(row);
+   const container=$('product'); container.replaceChildren();
+   const layout=el('div',null,'detail'), gallery=el('div'), info=el('div');
+   const title=el('h2',name); title.id='product-title';
+   const main=imageLink(row.photos[0],name,'photo'), thumbs=el('div',null,'thumbs');
+   row.photos.forEach((src,i)=>{
+     const btn=el('button'); btn.type='button';
+     btn.setAttribute('aria-label','Фото '+(i+1));
+     btn.setAttribute('aria-pressed',String(i===0)); btn.append(photo(src,''));
+     btn.addEventListener('click',()=>{
+       main.href=src; main.firstChild.src=src;
+       for(const thumb of thumbs.children) thumb.setAttribute('aria-pressed',String(thumb===btn));
+     });
+     thumbs.append(btn);
+   });
+   gallery.append(main,thumbs);
+   info.append(el('div','1688 · '+row.id),title,el('div',price(row),'price'));
+   if(config.rate) info.append(el('small',range(...limits(row),n=>'¥'+money(n))+' · цена товара'));
+   if(fits) info.append(el('p','Совместимость по карточке продавца: '+fits));
+   if(!window.ru[row.id]) info.append(el('p','Название и характеристики переведены автоматически. Совместимость требует сверки.'));
+   if(note) info.append(el('p',note));
+   if(row.moq) info.append(el('p','Минимальный заказ: '+row.moq+' '+(translate(row.unit) || 'шт.')));
+   if(row.unit_weight_kg>0) info.append(el('p','Вес с упаковкой по данным продавца: '+money(row.unit_weight_kg)+' кг'+(row.unit_weight_kg<0.1?' · требует проверки':'')));
+   if(row.price_tiers?.length) {
+     const list=el('ul');
+     for(const tier of row.price_tiers) list.append(el('li', 'От '+tier.min_quantity+' шт. — '+amount(tier.price)));
+     info.append(details('Оптовые цены',list));
+   }
+   if(row.skus?.length){
+     const list=el('ul');
+     row.skus.forEach((sku,i)=>list.append(el('li',[skuNames[i]??translate(sku.name),sku.price==null?'':amount(sku.price),sku.stock==null?'':'Остаток: '+sku.stock].filter(Boolean).join(' · '))));
+     info.append(details('Варианты',list));
+   }
+   const packages=el('ul');
+   const packs=packagesFor(row);
+   for(const pack of packs){
+     const skuIndex=pack.sku ? row.skus?.findIndex(sku=>sku.name===pack.sku) : -1;
+     const dims=[pack.length_cm,pack.width_cm,pack.height_cm];
+     const shipping=window.pricing.delivery(pack,config);
+     const skuPrice=row.skus?.[skuIndex]?.price;
+     const total=config.rate && (config.flat||config.perKg) && shipping!==null
+       ? range(...(skuPrice==null?limits(row):[skuPrice,skuPrice]),n=>rub(n*config.rate+shipping))
+       : null;
+     packages.append(el('li',[
+       skuNames[skuIndex]??translate(pack.sku),pack.weight_g>0 ? money(pack.weight_g/1000)+' кг по данным продавца' : 'Вес не указан',
+       dims.every(n=>n>0) ? dims.join(' × ')+' см' : null,
+       pack.weight_g>0 && pack.weight_g<100 ? 'Вес требует проверки' : null,
+       config.flat||config.perKg ? shipping===null ? 'Уточните вес или габариты для расчёта' : 'Доставка ≈ '+rub(shipping) : null,
+       total ? 'С доставкой ≈ '+total : null
+     ].filter(Boolean).join(' · ')));
+   }
+   info.append(details('Упаковка и доставка',packages));
+   if(row.specs?.length){
+     const list=el('dl');
+     for(const spec of row.specs){
+       const value=spec.name==='货号'&&article?article:spec.name==='规格'&&skuNames.length?skuNames.join('; '):window.specRu.values[spec.value]??spec.value;
+       list.append(el('dt',window.specRu.labels[spec.name]??labels[spec.name]??'Характеристика'),el('dd',translate(value)));
+     }
+     info.append(details('Характеристики',list));
+   }
+   info.append(details('Продажи и оценки',fields([
+     ['Продано по данным карточки',row.sold_count],['Как указано на 1688',row.sold_text],
+     ['Продажи за 30 дней',row.listing?.sales30d],['Заказы',row.orders],['Доля повторных покупок',row.repurchase_rate==null?null:money(row.repurchase_rate*100)+' %'],
+     ['Оценка из карточки',row.review_score],['Счётчик отзывов из карточки',row.review_count],
+     ['Доля положительных',row.good_rate==null?null:money(row.good_rate*100)+' %'],
+   ])));
+   const shippingStats=dropship(row.dropship);
+   if(shippingStats.length) {
+     const group=el('div');
+     group.append(el('p','Показатели продаж через партнёров. «До 100» — диапазон, который показывает 1688.'),fields(shippingStats));
+     info.append(details('Дропшиппинг',group));
+   }
+   info.append(details('Отправка и условия продавца',fields([
+     ['Регион отправки',row.ships_from],['Срок отправки, дней',row.dispatch_days],['Условия отправки',row.dispatch],
+     ['Доставка по данным 1688, CNY',row.shipping_fee],['Гарантии и условия возврата',row.services],
+     ['Акции',row.promotions?.map(item=>item.detail).filter(Boolean)],['Категория 1688',row.category_name],
+     ['Дата публикации',row.listed_at],['Продавец',row.supplier_name],...shop(row.shop_scores),
+   ])));
+   if(row.reviews?.length) info.append(details('Найденные отзывы',fields(row.reviews.map(review=>[
+     [review.rating+' / 5',review.publishedAt,review.isTemplateText?'Шаблонный отзыв':''].filter(Boolean).join(' · '),review.text
+   ]))));
+   for(const [label,url] of [['Карточка на 1688',row.url],['Видео продавца',row.video_url]]){
+     if(!/^https:\/\//.test(url??'')) continue;
+     const link=el('a',label); link.href=url; link.target='_blank'; link.rel='noopener noreferrer';
+     const line=el('p'); line.append(link); info.append(line);
+   }
+   layout.append(gallery,info); container.append(layout,el('h2','Описание продавца'));
+   if(translatedDescription) container.append(el('p',translatedDescription,'desc'));
+   else if(row.description) container.append(el('p',translate(row.description),'desc'));
+   else if(row.descriptionPhotos.length) container.append(el('p','Фотографии продавца из раздела описания.'));
+   else container.append(el('p','В выгрузке нет отдельного описания изделия.'));
+   for(const [i,src] of row.descriptionPhotos.entries()) container.append(imageLink(src,'Изображение описания '+(i+1),'description-img'));
+   dialog.showModal(); dialog.scrollTop=0;
+ }
+ function render(){
+   const brands={bmw:'宝马',mercedes:'奔驰',audi:'奥迪',toyota:'丰田',porsche:'保时捷',mazda:'马自达',ford:'福特',tesla:'特斯拉'};
+   const terms=search.value.toLowerCase().trim().split(/\s+/).filter(Boolean);
+   const results=window.products.filter(row=>{
+     const text=row.search+' '+translation(row).flat().join(' ').toLowerCase();
+     return terms.every(term=>text.includes(term)||text.includes(brands[term]??term));
+   });
+   if(order.value) results.sort((a,b)=>(order.value==='asc'?1:-1)*((a.price_min??a.price)-(b.price_min??b.price)));
+   $('count').textContent='Показано '+Math.min(shown,results.length)+' из '+results.length+' · Всего товаров: '+window.products.length;
+   $('more').hidden=shown>=results.length;
+   grid.replaceChildren();
+   if(!results.length) grid.append(el('p','По этому запросу товаров нет.'));
+   for(const row of results.slice(0,shown)){
+     const card=el('button',null,'card'); card.type='button';
+     const summary=el('span',null,'summary');
+     summary.append(el('span',translation(row)[0],'name'),el('b',price(row)),cardCosts(row),el('small',row.id));
+     card.append(photo(row.photos[0],''),summary); card.addEventListener('click',()=>open(row)); grid.append(card);
+   }
+ }
+ dialog.querySelector('.close').onclick=()=>dialog.close();
+ dialog.addEventListener('click',event=>{if(event.target===dialog)dialog.close();});
+ $('settings-open').onclick=()=>{
+   for(const [key,value] of Object.entries(config)) form.elements.namedItem(key).value=value;
+   $('settings-status').textContent='';
+   settings.showModal();
+ };
+ $('settings-close').onclick=()=>settings.close();
+ function formConfig(){ return window.pricing.clean(Object.fromEntries(new FormData(form))); }
+ form.onsubmit=event=>{
+   event.preventDefault();
+   config=formConfig();
+   $('settings-status').textContent=window.pricing.save(config)
+     ? 'Настройки сохранены в этом браузере.'
+     : 'Настройки применены для текущего просмотра.';
+   render();
+ };
+ $('settings-export').onclick=()=>{
+   if(!form.reportValidity()) return;
+   const url=URL.createObjectURL(new Blob(['window.catalogSettings = '+JSON.stringify(formConfig())+';\n'],{type:'text/javascript'}));
+   const link=el('a'); link.href=url; link.download='settings.js'; link.click();
+   setTimeout(()=>URL.revokeObjectURL(url),1000);
+   $('settings-status').textContent='Для общего курса замените settings.js в папке размещённой витрины.';
+ };
+ const reset=()=>{shown=24;render();};
+ $('more').onclick=()=>{shown+=24;render();};
+ search.addEventListener('input',reset); order.addEventListener('change',reset); render();
+});
+</script>
+</body>
+</html>
