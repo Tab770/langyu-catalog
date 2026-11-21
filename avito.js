@@ -14,10 +14,24 @@
     const goods = window.catalogOffers.unitPrice(row, sku);
     const pack = window.catalogOffers.packageFor(row, sku);
     const shipping = window.pricing.delivery(pack, rates);
+    const quantity = window.catalogOffers.minimumOrder(row);
+    const hasTier = row.price_tiers?.some(tier =>
+      tier.min_quantity<=quantity && (tier.max_quantity==null || tier.max_quantity>=quantity));
+    const needsPrice = !Number.isFinite(goods) || goods<=0 || (row.price_tiers?.length && !hasTier) ||
+      (sku && sku.price==null && !hasTier && (row.price_min!==row.price_max || row.skus.some(option=>option.price!=null)));
+    const goodsRub = needsPrice ? null : goods * rates.rate;
+    const dimensions = window.pricing.dimensionsToCheck(pack);
+    const missing = [
+      ...(needsPrice ? ['Уточните цену одной детали в этом исполнении.'] : []),
+      ...(dimensions.length ? ['Уточните '+new Intl.ListFormat('ru').format(dimensions)+' упаковки в сантиметрах.'] : []),
+    ];
     return {
+      goodsRub,
+      missing,
+      shippingRub: shipping,
       description: variant?.description ?? listing?.description ?? '',
-      priceRub: Number.isFinite(goods) && goods>0 && shipping!==null
-        ? Math.round(goods * rates.rate + shipping)
+      priceRub: goodsRub!==null && shipping!==null
+        ? Math.round(goodsRub + shipping)
         : null,
     };
   }
