@@ -90,8 +90,15 @@ document.addEventListener('DOMContentLoaded', () => {
  }
  const {translate, title: ruTitle, dropship, shop, labels}=window.catalogRu;
  const translation = row => row.displayTitle ? [row.displayTitle,'','',[],null,null] : window.ru[row.id] ?? [ruTitle(row),'','',[],null,null];
+ const variantLabels = {
+   '中网带ACC':'Решётка с ACC',
+   '中网不带ACC':'Решётка без ACC',
+   '宝马F30半铝机盖':'Капот BMW F30, частично алюминиевый',
+   '宝马F30铁机盖':'Капот BMW F30, стальной',
+   '宝马F30全铝机盖':'Капот BMW F30, полностью алюминиевый',
+ };
  const skuLabel = (row, sku, index) => {
-   const label=translation(row)[3][index] ?? translate(sku.name);
+   const label=variantLabels[sku.name] ?? translation(row)[3][index] ?? translate(sku.name);
    return label==='Нужна проверка перевода' ? sku.name : label;
  };
  const money = value => new Intl.NumberFormat('ru-RU',{maximumFractionDigits:2}).format(value);
