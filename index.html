@@ -9,6 +9,7 @@
 .bar{background:#12231f;color:white}.bar div,main{max-width:1240px;margin:auto;padding:18px 28px}.bar strong{font-size:23px;letter-spacing:.15em}.bar span{margin-left:18px;color:#b8cdc6;font-size:14px}
 .bar div{display:flex;align-items:center;flex-wrap:wrap;gap:8px}.bar span{margin-left:8px}#settings-open{margin-left:auto;background:#e2f0eb;color:#12231f;border:0;border-radius:8px;padding:9px 12px}#settings{max-width:575px}#pricing-form label{display:grid;gap:6px}#pricing-form button{background:#12231f;color:#fff;border:0;border-radius:8px;padding:10px 12px;margin:0 3px 6px 0}#pricing-form h3{margin-top:24px}
 h1{font-size:clamp(34px,6vw,64px);letter-spacing:-.065em;line-height:1;margin:30px 0 12px} h2{letter-spacing:-.035em} .intro{color:#53635e;margin:0 0 28px}.filters{display:grid;grid-template-columns:1fr auto;gap:12px}input,select{min-width:0;background:white;border:1px solid #ccd5d2;border-radius:8px;padding:13px;color:#182421} .count{color:#53635e;margin:18px 0}
+.categories{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}.category{background:white;border:1px solid #ccd5d2;border-radius:8px;padding:8px 12px;color:inherit;text-align:left}.category[aria-pressed=true]{background:#12231f;border-color:#12231f;color:white}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(245px,1fr));gap:18px}.card{background:white;border:1px solid #dbe2df;border-radius:12px;overflow:hidden;text-align:left;padding:0;color:inherit;transition:box-shadow .2s,border-color .2s;display:flex;flex-direction:column}.card:hover{border-color:#27987e;box-shadow:0 8px 26px #183d2820}.card img{width:100%;aspect-ratio:4/3;object-fit:cover;background:#e4ebe8}.summary{padding:15px;display:grid;gap:8px;width:100%}.summary b{font-size:21px;color:#125d4c}.summary small{color:#53635e}.name{min-height:3em}
 .card-costs{display:grid;gap:4px;padding-top:8px;border-top:1px solid #dbe2df;font-size:14px}.card-costs strong{font-size:16px;color:#125d4c}
 dialog{border:0;border-radius:14px;padding:0;width:min(960px,calc(100% - 24px));max-height:90vh;color:inherit;box-shadow:0 20px 80px #0005}dialog::backdrop{background:#12231fbb}.modal{padding:24px}.close{position:sticky;top:8px;float:right;z-index:1;background:#12231f;color:white;border:0;border-radius:8px;padding:9px 13px}.detail{clear:both;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px}.photo{width:100%;max-height:420px;object-fit:contain;background:#eef1f0;border-radius:8px}.thumbs{display:flex;flex-wrap:wrap;gap:7px;margin-top:8px}.thumbs button{padding:0;border:2px solid transparent;border-radius:7px;overflow:hidden;background:white}.thumbs button[aria-pressed=true]{border-color:#287e6c}.thumbs img{width:61px;height:61px;object-fit:cover;display:block}.price{font-size:28px;font-weight:700;color:#125d4c}.desc{white-space:pre-wrap;overflow-wrap:anywhere}.description-img{display:block;width:min(100%,740px);margin:12px auto;border-radius:6px}dl{margin:0}dt{font-weight:650}dd{margin:3px 0 12px;overflow-wrap:anywhere}a{color:#125d4c}details{border-top:1px solid #dbe2df;padding:12px 0}summary{cursor:pointer;font-weight:650}
@@ -25,6 +26,7 @@ dialog{border:0;border-radius:14px;padding:0;width:min(960px,calc(100% - 24px));
 <main>
  <h1>Каталог автодеталей</h1>
  <p class="intro">Каталог продавца Langyu на 1688</p>
+ <div id="categories" class="categories" role="group" aria-label="Категории товаров"></div>
  <div class="filters"><input id="search" type="search" aria-label="Поиск товаров" placeholder="Название, модель авто или ID"><select id="order" aria-label="Сортировка"><option value="">По умолчанию</option><option value="asc">Цена по возрастанию</option><option value="desc">Цена по убыванию</option></select></div>
  <p id="count" class="count" aria-live="polite"></p>
  <section id="grid" class="grid" aria-label="Товары"></section>
@@ -52,6 +54,37 @@ document.addEventListener('DOMContentLoaded', () => {
  const settings=$('settings'), form=$('pricing-form');
  let config=window.pricing.load();
  let shown=24;
+ let selectedCategory='';
+ // Порядок правил учитывает названия, в которых упомянуто несколько деталей.
+ const categoryRules = [
+   ['Капоты', /海外V款包围.*引擎盖|尚酷多款机盖大包围/],
+   ['Чехлы запасного колеса', /备胎罩/],
+   ['Крышки багажника', /尾箱盖|后备箱盖|尾盖/],
+   ['Крышки двигателя', /发动机罩|引擎罩|引擎盖罩/],
+   ['Вставки капота', /机盖(?:ABS亮黑|ABS|素黑无漆黑色)?风口|引擎盖进气口|ABS亮黑风口|通用风口/],
+   ['Комплекты обвеса', /小包围|全包围/],
+   ['Бамперы и накладки', /前杠总成|后杠总成|前铲|前唇|小包角|(?:后唇|尾唇)/],
+   ['Комплекты обвеса', /大包围|包围套件|(?:PP|pp|碳纤)包围|改装包围|PP材质包围/],
+   ['Крылья', /叶子板|翼子板|挡泥板/],
+   ['Капоты', /机盖|引擎盖|头盖|擎盖/],
+   ['Спойлеры и антикрылья', /尾翼|顶翼|扰流板|定风翼/],
+   ['Бамперы и накладки', /前杠|后杠/],
+   ['Накладки порогов', /侧裙/],
+   ['Насадки выхлопа', /尾喉/],
+   ['Детали салона', /内饰|座椅|方向盘/],
+   ['Наружные аксессуары', /百叶窗|顶灯/],
+ ];
+ const otherCategory='Прочее';
+ function categoryFor(row) {
+   return categoryRules.find(([,pattern])=>pattern.test(row.title))?.[0] ?? otherCategory;
+ }
+ const productCategories=new Map();
+ const categoryCounts=new Map();
+ for(const row of window.products){
+   const category=categoryFor(row);
+   productCategories.set(row.id,category);
+   categoryCounts.set(category,(categoryCounts.get(category)??0)+1);
+ }
  const {translate, title: ruTitle, dropship, shop, labels}=window.catalogRu;
  const translation = row => window.ru[row.id] ?? [ruTitle(row),'','',[],null,null];
  const money = value => new Intl.NumberFormat('ru-RU',{maximumFractionDigits:2}).format(value);
@@ -209,6 +242,7 @@ document.addEventListener('DOMContentLoaded', () => {
    const brands={bmw:'宝马',mercedes:'奔驰',audi:'奥迪',toyota:'丰田',porsche:'保时捷',mazda:'马自达',ford:'福特',tesla:'特斯拉'};
    const terms=search.value.toLowerCase().trim().split(/\s+/).filter(Boolean);
    const results=window.products.filter(row=>{
+     if(selectedCategory && productCategories.get(row.id)!==selectedCategory) return false;
      const text=row.search+' '+translation(row).flat().join(' ').toLowerCase();
      return terms.every(term=>text.includes(term)||text.includes(brands[term]??term));
    });
@@ -249,6 +283,21 @@ document.addEventListener('DOMContentLoaded', () => {
    $('settings-status').textContent='Для общего курса замените settings.js в папке размещённой витрины.';
  };
  const reset=()=>{shown=24;render();};
+ const categories=$('categories');
+ const categoryLabels=[...categoryCounts.keys()].sort((a,b)=>categoryCounts.get(b)-categoryCounts.get(a));
+ for(const category of ['',...categoryLabels]){
+   const count=category ? categoryCounts.get(category) : window.products.length;
+   if(!count) continue;
+   const button=el('button',(category||'Все товары')+' · '+count,'category');
+   button.type='button';
+   button.setAttribute('aria-pressed',String(!category));
+   button.addEventListener('click',()=>{
+     selectedCategory=category;
+     for(const item of categories.children) item.setAttribute('aria-pressed',String(item===button));
+     reset();
+   });
+   categories.append(button);
+ }
  $('more').onclick=()=>{shown+=24;render();};
  search.addEventListener('input',reset); order.addEventListener('change',reset); render();
 });
