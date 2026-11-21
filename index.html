@@ -192,7 +192,8 @@ document.addEventListener('DOMContentLoaded', () => {
      costs.append(el('span','Доставка: '+costRange(prices.map(option=>option.shippingRub))+' за 1 шт.'));
    }
    if(prices.every(option=>option.priceRub!==null)){
-     costs.append(el('strong','С доставкой: '+costRange(prices.map(option=>option.priceRub))+' за 1 шт.'));
+     costs.append(el('span','С доставкой: '+costRange(prices.map(option=>option.priceRub))+' за 1 шт.'));
+     costs.append(el('strong','Цена с наценкой: '+costRange(prices.map(option=>option.avitoPriceRub))+' за 1 шт.'));
    } else {
      const notice=el('span',null,'data-check');
      notice.append(el('strong','Для цены Авито нужны данные'));
