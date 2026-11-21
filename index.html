@@ -7,7 +7,7 @@
 <style>
 *{box-sizing:border-box} body{margin:0;background:#f2f4f5;color:#182421;font:16px system-ui,sans-serif} button,input,select{font:inherit} button,select{cursor:pointer} button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #27987e;outline-offset:3px}
 .bar{background:#12231f;color:white}.bar div,main{max-width:1240px;margin:auto;padding:18px 28px}.bar strong{font-size:23px;letter-spacing:.15em}.bar span{margin-left:18px;color:#b8cdc6;font-size:14px}
-.bar div{display:flex;align-items:center;flex-wrap:wrap;gap:8px}.bar span{margin-left:8px}#settings-open{margin-left:auto;background:#e2f0eb;color:#12231f;border:0;border-radius:8px;padding:9px 12px}#settings{max-width:575px}#pricing-form label{display:grid;gap:6px}#pricing-form button{background:#12231f;color:#fff;border:0;border-radius:8px;padding:10px 12px;margin:0 3px 6px 0}#pricing-form h3{margin-top:24px}
+.bar div{display:flex;align-items:center;flex-wrap:wrap;gap:8px}.bar span{margin-left:8px}
 h1{font-size:clamp(34px,6vw,64px);letter-spacing:-.065em;line-height:1;margin:30px 0 12px} h2{letter-spacing:-.035em} .intro{color:#53635e;margin:0 0 28px}.filters{display:grid;grid-template-columns:1fr auto;gap:12px}input,select{min-width:0;background:white;border:1px solid #ccd5d2;border-radius:8px;padding:13px;color:#182421} .count{color:#53635e;margin:18px 0}
 .material-filter{display:flex;align-items:center;gap:8px;margin-top:12px;flex-wrap:wrap}.material-filter select{max-width:100%}
 .categories{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}.category{background:white;border:1px solid #ccd5d2;border-radius:8px;padding:8px 12px;color:inherit;text-align:left}.category[aria-pressed=true]{background:#12231f;border-color:#12231f;color:white}
@@ -21,14 +21,13 @@ dialog{border:0;border-radius:14px;padding:0;width:min(960px,calc(100% - 24px));
 <script defer src="products.js"></script>
 <script defer src="ru.js"></script>
 <script defer src="localize.js"></script>
-<script defer src="settings.js"></script>
 <script defer src="pricing.js"></script>
 <script defer src="offers.js"></script>
 <script defer src="materials.js"></script>
 <script defer src="avito.js"></script>
 </head>
 <body>
-<header class="bar"><div><strong>LANGYU</strong><span>Автодетали · локальная витрина</span> <button id="settings-open" type="button">Настройки цен</button></div></header>
+<header class="bar"><div><strong>LANGYU</strong><span>Автодетали · локальная витрина</span></div></header>
 <main>
  <h1>Каталог автодеталей</h1>
  <p class="intro">Каталог продавца Langyu на 1688</p>
@@ -42,24 +41,10 @@ dialog{border:0;border-radius:14px;padding:0;width:min(960px,calc(100% - 24px));
  <p><button id="more" type="button" hidden>Показать ещё</button></p>
 </main>
 <dialog id="dialog" aria-labelledby="product-title"><div class="modal"><button class="close" type="button">Закрыть</button><div id="product"></div></div></dialog>
-<dialog id="settings" aria-labelledby="settings-title"><div class="modal">
- <form id="pricing-form">
-  <h2 id="settings-title">Курс и доставка</h2>
-  <p><label>Рублей за 1 юань <input name="rate" type="number" min="0" step="any" required></label></p>
-  <p><label>Рублей за 1 доллар <input name="usdRate" type="number" min="0" step="any" required></label></p>
-  <p><label>Доставка, $ за м³ <input name="usdPerM3" type="number" min="0" step="any" required></label></p>
-  <p>Доставка рассчитывается по внешним размерам упаковки. Для пересчёта в рубли укажите оба курса.</p>
-  <button type="submit">Применить</button> <button id="settings-close" type="button">Закрыть</button>
-  <button id="settings-export" type="button">Скачать общие настройки</button>
-  <p id="settings-status" role="status"></p>
- </form>
-</div></dialog>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
  const $ = id => document.getElementById(id);
  const grid=$('grid'), search=$('search'), order=$('order'), dialog=$('dialog');
- const settings=$('settings'), form=$('pricing-form');
- let config=window.pricing.load();
  const pageSize=24;
  let shown=pageSize;
  const sentinel=$('load-next');
@@ -198,25 +183,23 @@ document.addEventListener('DOMContentLoaded', () => {
  function cardCosts(row, options){
    const costs=el('span',null,'card-costs');
    const costRange=values=>range(Math.min(...values),Math.max(...values),rub);
-   const estimates=options.map(({sku})=>({
-     goods:config.rate ? unitPrice(row,sku)*config.rate : null,
-     shipping:window.pricing.delivery(packageFor(row,sku),config),
-   }));
-   const shipping=estimates.map(option=>option.shipping);
-   costs.append(el('strong','Цена в рублях с доставкой'));
-   costs.append(el('span',config.rate
-     ? 'Товар: '+costRange(estimates.map(option=>option.goods))+' за 1 шт.'
-     : 'Товар: укажите курс юаня'));
-   if(shipping.every(value=>value!==null)){
-     costs.append(el('span','Доставка: ≈ '+costRange(shipping)+' за 1 шт.'));
-     if(config.rate){
-       const totals=estimates.map(option=>option.goods+option.shipping);
-       costs.append(el('strong','Итого: ≈ '+costRange(totals)+' за 1 шт.'));
-     }
+   const prices=options.map(({sku})=>window.catalogAvito.listingFor(row,sku));
+   costs.append(el('strong','Цена для Авито'));
+   if(prices.every(option=>option.goodsRub!==null)){
+     costs.append(el('span','Товар: '+costRange(prices.map(option=>option.goodsRub))+' за 1 шт.'));
+   }
+   if(prices.every(option=>option.shippingRub!==null)){
+     costs.append(el('span','Доставка: '+costRange(prices.map(option=>option.shippingRub))+' за 1 шт.'));
+   }
+   if(prices.every(option=>option.priceRub!==null)){
+     costs.append(el('strong','С доставкой: '+costRange(prices.map(option=>option.priceRub))+' за 1 шт.'));
    } else {
-     costs.append(el('span',config.usdRate
-       ? 'Доставка: уточните габариты упаковки'
-       : 'Доставка: укажите курс доллара'));
+     const notice=el('span',null,'data-check');
+     notice.append(el('strong','Для цены Авито нужны данные'));
+     for(const message of new Set(prices.flatMap(option=>option.missing))){
+       notice.append(el('span',message,'supplier-question'));
+     }
+     costs.append(notice);
    }
    return costs;
  }
@@ -247,11 +230,10 @@ document.addEventListener('DOMContentLoaded', () => {
    return list;
  }
  function avitoDescription(row, sku) {
-   const {description,priceRub}=window.catalogAvito.listingFor(row,sku);
+   const {description}=window.catalogAvito.listingFor(row,sku);
    const section=el('section',null,'avito-description');
    section.append(el('h2','Описание для Авито'),
-     el('p',description||'Описание пока не добавлено.'),
-     el('strong',Number.isFinite(priceRub)&&priceRub>0 ? 'Цена для Авито: '+rub(priceRub) : 'Цена для Авито не рассчитана. Проверьте цену товара и размеры упаковки.'));
+     el('p',description||'Описание пока не добавлено.'));
    return section;
  }
  function open(row, selectedIndex=0, restoreFocus=false) {
@@ -394,28 +376,6 @@ document.addEventListener('DOMContentLoaded', () => {
  }
  dialog.querySelector('.close').onclick=()=>dialog.close();
  dialog.addEventListener('click',event=>{if(event.target===dialog)dialog.close();});
- $('settings-open').onclick=()=>{
-   for(const [key,value] of Object.entries(config)) form.elements.namedItem(key).value=value;
-   $('settings-status').textContent='';
-   settings.showModal();
- };
- $('settings-close').onclick=()=>settings.close();
- function formConfig(){ return window.pricing.clean(Object.fromEntries(new FormData(form))); }
- form.onsubmit=event=>{
-   event.preventDefault();
-   config=formConfig();
-   $('settings-status').textContent=window.pricing.save(config)
-     ? 'Настройки сохранены в этом браузере.'
-     : 'Настройки применены для текущего просмотра.';
-   render();
- };
- $('settings-export').onclick=()=>{
-   if(!form.reportValidity()) return;
-   const url=URL.createObjectURL(new Blob(['window.catalogSettings = '+JSON.stringify(formConfig())+';\n'],{type:'text/javascript'}));
-   const link=el('a'); link.href=url; link.download='settings.js'; link.click();
-   setTimeout(()=>URL.revokeObjectURL(url),1000);
-   $('settings-status').textContent='Для общего курса замените settings.js в папке размещённой витрины.';
- };
  const reset=()=>{shown=pageSize;render();};
  const categories=$('categories');
  const categoryLabels=[...categoryCounts.keys()].sort((a,b)=>categoryCounts.get(b)-categoryCounts.get(a));
