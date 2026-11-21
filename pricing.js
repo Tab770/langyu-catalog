@@ -1,17 +1,17 @@
 (() => {
-  const fields = ['rate', 'flat', 'perKg', 'divisor'];
-  const defaults = Object.fromEntries(fields.map(key => [key, 0]));
+  const defaults = {rate: 0, usdRate: 0, usdPerM3: 300};
+  const fields = Object.keys(defaults);
   const clean = settings => Object.fromEntries(fields.map(key => {
-    const value = Number(settings?.[key]);
-    return [key, Number.isFinite(value) && value >= 0 ? value : 0];
+    const value = Number(settings?.[key] ?? defaults[key]);
+    return [key, Number.isFinite(value) && value >= 0 ? value : defaults[key]];
   }));
   const storageKey = 'langyu-catalog-pricing-v1';
   function load() {
     try {
       const saved = localStorage.getItem(storageKey);
-      if (saved) return clean(JSON.parse(saved));
+      if (saved) return clean({...window.catalogSettings, ...JSON.parse(saved)});
     } catch {}
-    return clean(window.catalogSettings ?? defaults);
+    return clean(window.catalogSettings);
   }
   function save(settings) {
     try {
@@ -21,17 +21,16 @@
       return false;
     }
   }
-  function delivery(pack, settings) {
-    if (!settings.perKg) return settings.flat;
-    const weight = pack?.weight_g / 1000;
-    if (!(weight >= 0.1)) return null;
-    let billable = weight;
-    if (settings.divisor) {
-      const dims = [pack.length_cm, pack.width_cm, pack.height_cm];
-      if (!dims.every(n => Number.isFinite(n) && n > 0 && n <= 240)) return null;
-      billable = Math.max(weight, dims.reduce((volume, n) => volume * n, 1) / settings.divisor);
-    }
-    return settings.flat + billable * settings.perKg;
+  function volume(pack) {
+    const dims = [pack?.length_cm, pack?.width_cm, pack?.height_cm];
+    if (!dims.every(n => Number.isFinite(n) && n > 0 && n <= 240)) return null;
+    return dims.reduce((product, n) => product * n, 1) / 1000000;
   }
-  window.pricing = {clean, load, save, delivery};
+  function delivery(pack, settings) {
+    if (settings.usdPerM3 === 0) return 0;
+    if (!settings.usdRate) return null;
+    const cubicMetres = volume(pack);
+    return cubicMetres === null ? null : cubicMetres * settings.usdPerM3 * settings.usdRate;
+  }
+  window.pricing = {clean, load, save, volume, delivery};
 })();
