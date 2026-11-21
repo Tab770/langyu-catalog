@@ -9,6 +9,7 @@
 .bar{background:#12231f;color:white}.bar div,main{max-width:1240px;margin:auto;padding:18px 28px}.bar strong{font-size:23px;letter-spacing:.15em}.bar span{margin-left:18px;color:#b8cdc6;font-size:14px}
 .bar div{display:flex;align-items:center;flex-wrap:wrap;gap:8px}.bar span{margin-left:8px}#settings-open{margin-left:auto;background:#e2f0eb;color:#12231f;border:0;border-radius:8px;padding:9px 12px}#settings{max-width:575px}#pricing-form label{display:grid;gap:6px}#pricing-form button{background:#12231f;color:#fff;border:0;border-radius:8px;padding:10px 12px;margin:0 3px 6px 0}#pricing-form h3{margin-top:24px}
 h1{font-size:clamp(34px,6vw,64px);letter-spacing:-.065em;line-height:1;margin:30px 0 12px} h2{letter-spacing:-.035em} .intro{color:#53635e;margin:0 0 28px}.filters{display:grid;grid-template-columns:1fr auto;gap:12px}input,select{min-width:0;background:white;border:1px solid #ccd5d2;border-radius:8px;padding:13px;color:#182421} .count{color:#53635e;margin:18px 0}
+.material-filter{display:flex;align-items:center;gap:8px;margin-top:12px;flex-wrap:wrap}.material-filter select{max-width:100%}
 .categories{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}.category{background:white;border:1px solid #ccd5d2;border-radius:8px;padding:8px 12px;color:inherit;text-align:left}.category[aria-pressed=true]{background:#12231f;border-color:#12231f;color:white}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(245px,1fr));gap:18px}.card{background:white;border:1px solid #dbe2df;border-radius:12px;overflow:hidden;text-align:left;padding:0;color:inherit;transition:box-shadow .2s,border-color .2s;display:flex;flex-direction:column}.card:hover{border-color:#27987e;box-shadow:0 8px 26px #183d2820}.card img{width:100%;aspect-ratio:4/3;object-fit:cover;background:#e4ebe8}.summary{padding:15px;display:grid;gap:8px;width:100%}.summary b{font-size:21px;color:#125d4c}.summary small{color:#53635e}.name{min-height:3em}
 .data-check{background:#fff4dc;color:#573900;border:1px solid #e9c67c;border-radius:8px;padding:9px 12px;font-size:14px}.data-check ul{margin:6px 0 0;padding-left:20px}.data-check li+li{margin-top:4px}.check-filter{display:flex;gap:8px;align-items:center;margin-top:12px;color:#53635e}.check-filter input{accent-color:#125d4c}
@@ -22,6 +23,7 @@ dialog{border:0;border-radius:14px;padding:0;width:min(960px,calc(100% - 24px));
 <script defer src="settings.js"></script>
 <script defer src="pricing.js"></script>
 <script defer src="offers.js"></script>
+<script defer src="materials.js"></script>
 </head>
 <body>
 <header class="bar"><div><strong>LANGYU</strong><span>Автодетали · локальная витрина</span> <button id="settings-open" type="button">Настройки цен</button></div></header>
@@ -30,6 +32,7 @@ dialog{border:0;border-radius:14px;padding:0;width:min(960px,calc(100% - 24px));
  <p class="intro">Каталог продавца Langyu на 1688</p>
  <div id="categories" class="categories" role="group" aria-label="Категории товаров"></div>
  <div class="filters"><input id="search" type="search" aria-label="Поиск товаров" placeholder="Название, модель авто или ID"><select id="order" aria-label="Сортировка"><option value="">По умолчанию</option><option value="asc">Цена по возрастанию</option><option value="desc">Цена по убыванию</option></select></div>
+ <label class="material-filter">Материал <select id="material"><option value="">Все материалы</option></select></label>
  <label class="check-filter"><input id="needs-check" type="checkbox"> Только карточки с данными на уточнение</label>
  <p id="count" class="count" aria-live="polite"></p>
  <section id="grid" class="grid" aria-label="Товары"></section>
@@ -83,6 +86,15 @@ document.addEventListener('DOMContentLoaded', () => {
  }
  const {expand, minimumOrder, hasVariants, unitPrice, packageFor}=window.catalogOffers;
  const products=window.products.flatMap(expand);
+ const material=$('material');
+ const productOptions=new Map(products.map(row=>[row,window.catalogMaterials.options(row)]));
+ const availableMaterials=new Set([...productOptions.values()].flatMap(options=>options.flatMap(option=>option.materials)));
+ for(const [key,label] of window.catalogMaterials.labels){
+   if(!availableMaterials.has(key)) continue;
+   const option=el('option',label);
+   option.value=key;
+   material.append(option);
+ }
  const productCategories=new Map();
  const categoryCounts=new Map();
  for(const row of products){
@@ -113,9 +125,10 @@ document.addEventListener('DOMContentLoaded', () => {
  const range = (min,max,format) => min===max ? format(min) : format(min)+'–'+format(max);
  const rub = value => money(Math.round(value))+' ₽';
  const amount = value => config.rate ? rub(value*config.rate) : '¥'+money(value);
- const priceLabel = (row, sku) => {
-   const base=unitPrice(row,sku);
-   const from=!sku && row.skus?.some(option=>unitPrice(row,option)>base);
+ const optionPrice = (row, options) => Math.min(...options.map(option=>unitPrice(row,option.sku)));
+ const priceLabel = (row, sku, options) => {
+   const base=options ? optionPrice(row,options) : unitPrice(row,sku);
+   const from=options?.some(option=>unitPrice(row,option.sku)>base);
    const minimum=minimumOrder(row);
    return (from?'от ':'')+amount(base)+' за 1 шт.'+(minimum>1?' (от '+minimum+' шт.)':'');
  };
@@ -168,14 +181,13 @@ document.addEventListener('DOMContentLoaded', () => {
  const delivery = pack => config.perKg && suspiciousWeight(pack?.weight_g)
    ? null
    : window.pricing.delivery(pack,config);
- function cardCosts(row){
+ function cardCosts(row, options){
    const costs=el('span',null,'card-costs');
    if(!hasDelivery()){
      costs.append(el('span','Доставка: тариф не задан'));
      return costs;
    }
-   const options=row.skus?.length ? row.skus : [undefined];
-   const estimates=options.map(sku=>({
+   const estimates=options.map(({sku})=>({
      base:unitPrice(row,sku),
      shipping:delivery(packageFor(row,sku)),
    }));
@@ -331,25 +343,27 @@ document.addEventListener('DOMContentLoaded', () => {
    const brands={bmw:'宝马',mercedes:'奔驰',audi:'奥迪',toyota:'丰田',porsche:'保时捷',mazda:'马自达',ford:'福特',tesla:'特斯拉'};
    const terms=search.value.toLowerCase().trim().split(/\s+/).filter(Boolean);
    const onlyNeedsCheck=$('needs-check').checked;
-   const results=products.filter(row=>{
-     if(onlyNeedsCheck && !checksByProduct.get(row).length) return false;
-     if(selectedCategory && productCategories.get(row)!==selectedCategory) return false;
+   const results=products.flatMap(row=>{
+     if(onlyNeedsCheck && !checksByProduct.get(row).length) return [];
+     if(selectedCategory && productCategories.get(row)!==selectedCategory) return [];
      const text=row.search+' '+translation(row).flat().join(' ').toLowerCase()+' '+(row.skus??[]).map((sku,index)=>skuLabel(row,sku,index)).join(' ').toLowerCase();
-     return terms.every(term=>text.includes(term)||text.includes(brands[term]??term));
+     if(!terms.every(term=>text.includes(term)||text.includes(brands[term]??term))) return [];
+     const options=productOptions.get(row).filter(option=>!material.value || option.materials.includes(material.value));
+     return options.length ? [{row,options,price:optionPrice(row,options)}] : [];
    });
-   if(order.value) results.sort((a,b)=>(order.value==='asc'?1:-1)*(unitPrice(a)-unitPrice(b)));
+   if(order.value) results.sort((a,b)=>(order.value==='asc'?1:-1)*(a.price-b.price));
    $('count').textContent='Показано '+Math.min(shown,results.length)+' из '+results.length+' · Всего товаров: '+products.length;
    $('more').hidden=shown>=results.length;
    grid.replaceChildren();
    if(!results.length) grid.append(el('p','По этому запросу товаров нет.'));
-   for(const row of results.slice(0,shown)){
+   for(const {row,options,price} of results.slice(0,shown)){
      const card=el('button',null,'card'); card.type='button';
      const summary=el('span',null,'summary');
-     summary.append(el('span',translation(row)[0],'name'),el('b',priceLabel(row)));
+     summary.append(el('span',translation(row)[0],'name'),el('b',priceLabel(row,undefined,options)));
      const checks=checksByProduct.get(row);
      if(checks.length) summary.append(el('span','Уточнить: '+checks.join(', ').toLowerCase(),'data-check'));
-     summary.append(cardCosts(row),el('small',row.id));
-     card.append(photo(row.photos[0],''),summary); card.addEventListener('click',()=>open(row)); grid.append(card);
+     summary.append(cardCosts(row,options),el('small',row.id));
+     card.append(photo(row.photos[0],''),summary); card.addEventListener('click',()=>open(row,material.value ? options.find(option=>unitPrice(row,option.sku)===price).index : 0)); grid.append(card);
    }
  }
  dialog.querySelector('.close').onclick=()=>dialog.close();
@@ -393,6 +407,7 @@ document.addEventListener('DOMContentLoaded', () => {
    categories.append(button);
  }
  $('more').onclick=()=>{shown+=24;render();};
+ material.addEventListener('change',reset);
  $('needs-check').addEventListener('change',reset);
  search.addEventListener('input',reset); order.addEventListener('change',reset); render();
 });
