@@ -112,7 +112,11 @@ document.addEventListener('DOMContentLoaded', () => {
    categoryCounts.set(category,(categoryCounts.get(category)??0)+1);
  }
  const {translate, title: ruTitle, dropship, shop, labels}=window.catalogRu;
- const translation = row => row.displayTitle ? [row.displayTitle,'','',[],null,null] : window.ru[row.id] ?? [ruTitle(row),'','',[],null,null];
+ const translation = row => {
+   const localized = window.ru[row.id] ?? [ruTitle(row),'','',[],null,null];
+   const name = row.displayTitle ?? window.catalogTitles[row.id] ?? localized[0];
+   return [name,...localized.slice(1)];
+ };
  const variantLabels = {
    '双锁钩':'Два крюка замка',
    '单锁钩':'Один крюк замка',
