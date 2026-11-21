@@ -91,6 +91,12 @@ document.addEventListener('DOMContentLoaded', () => {
  const {translate, title: ruTitle, dropship, shop, labels}=window.catalogRu;
  const translation = row => row.displayTitle ? [row.displayTitle,'','',[],null,null] : window.ru[row.id] ?? [ruTitle(row),'','',[],null,null];
  const variantLabels = {
+   '双锁钩':'Два крюка замка',
+   '单锁钩':'Один крюк замка',
+   '黑+灰':'Чёрный с серым',
+   '黑+橙':'Чёрный с оранжевым',
+   '黑+红':'Чёрный с красным',
+   '尾喉':'Насадки выхлопа',
    '中网带ACC':'Решётка с ACC',
    '中网不带ACC':'Решётка без ACC',
    '宝马F30半铝机盖':'Капот BMW F30, частично алюминиевый',
