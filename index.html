@@ -16,6 +16,7 @@ h1{font-size:clamp(34px,6vw,64px);letter-spacing:-.065em;line-height:1;margin:30
 .card-costs{display:grid;gap:4px;padding-top:8px;border-top:1px solid #dbe2df;font-size:14px}.card-costs strong{font-size:16px;color:#125d4c}
 dialog{border:0;border-radius:14px;padding:0;width:min(960px,calc(100% - 24px));max-height:90vh;color:inherit;box-shadow:0 20px 80px #0005}dialog::backdrop{background:#12231fbb}.modal{padding:24px}.close{position:sticky;top:8px;float:right;z-index:1;background:#12231f;color:white;border:0;border-radius:8px;padding:9px 13px}.detail{clear:both;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px}.photo{width:100%;max-height:420px;object-fit:contain;background:#eef1f0;border-radius:8px}.thumbs{display:flex;flex-wrap:wrap;gap:7px;margin-top:8px}.thumbs button{padding:0;border:2px solid transparent;border-radius:7px;overflow:hidden;background:white}.thumbs button[aria-pressed=true]{border-color:#287e6c}.thumbs img{width:61px;height:61px;object-fit:cover;display:block}.price{font-size:28px;font-weight:700;color:#125d4c}.desc{white-space:pre-wrap;overflow-wrap:anywhere}.description-img{display:block;width:min(100%,740px);margin:12px auto;border-radius:6px}dl{margin:0}dt{font-weight:650}dd{margin:3px 0 12px;overflow-wrap:anywhere}a{color:#125d4c}details{border-top:1px solid #dbe2df;padding:12px 0}summary{cursor:pointer;font-weight:650}
 @media(max-width:640px){.bar div,main{padding:14px}.filters,.detail{grid-template-columns:1fr}.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.summary{padding:10px}.modal{padding:14px}}
+.avito-description{display:grid;gap:8px;margin-top:24px}.avito-description label{font-size:1.15rem;font-weight:650}.avito-description textarea{box-sizing:border-box;width:100%;min-height:120px;padding:12px;border:1px solid #ccd5d2;border-radius:8px;resize:vertical;font:inherit;color:inherit}.avito-description textarea:focus-visible{outline:3px solid #27987e;outline-offset:3px}.avito-description small{color:#53635e}
 </style>
 <script defer src="products.js"></script>
 <script defer src="ru.js"></script>
@@ -247,6 +248,40 @@ document.addEventListener('DOMContentLoaded', () => {
    }
    return list;
  }
+ const avitoDrafts=new Map();
+ function avitoDescription(row) {
+   const key='langyu-avito-description-v1:'+JSON.stringify(
+     row.displayTitle ? [row.id,row.skus.map(sku=>sku.name).sort()] : [row.id]
+   );
+   const section=el('section',null,'avito-description');
+   const label=el('label','Описание для Авито');
+   const input=el('textarea');
+   input.id='avito-description';
+   input.setAttribute('aria-describedby','avito-description-status');
+   label.htmlFor=input.id;
+   const status=el('small','Черновик сохраняется в этом браузере.');
+   status.id='avito-description-status';
+   status.setAttribute('role','status');
+   let stored='';
+   try {
+     stored=localStorage.getItem(key) ?? '';
+   } catch {
+     status.textContent='Хранилище недоступно. Черновик сохранится до обновления страницы.';
+   }
+   input.value=avitoDrafts.get(key) ?? stored;
+   input.addEventListener('input',()=>{
+     avitoDrafts.set(key,input.value);
+     try {
+       if(input.value) localStorage.setItem(key,input.value);
+       else localStorage.removeItem(key);
+       status.textContent='Черновик сохранён в этом браузере.';
+     } catch {
+       status.textContent='Хранилище недоступно. Черновик сохранится до обновления страницы.';
+     }
+   });
+   section.append(label,input,status);
+   return section;
+ }
  function open(row, selectedIndex=0, restoreFocus=false) {
    const sku=row.skus?.[selectedIndex];
    let picker;
@@ -348,7 +383,7 @@ document.addEventListener('DOMContentLoaded', () => {
    if(sku && (hasVariants(row)||row.displayTitle)){
      container.append(el('h2','Выбранное исполнение'),el('p',skuLabel(row,sku,selectedIndex)));
    }
-   container.append(el('h2','Описание продавца'));
+   container.append(avitoDescription(row),el('h2','Описание продавца'));
    if(row.displayTitle) container.append(el('p','Описание и изображения продавца относятся к общему объявлению 1688.'));
    if(translatedDescription) container.append(el('p',translatedDescription,'desc'));
    else if(row.description) container.append(el('p',translate(row.description),'desc'));
