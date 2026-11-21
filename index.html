@@ -9,9 +9,10 @@
 .bar{background:#12231f;color:white}.bar div,main{max-width:1240px;margin:auto;padding:18px 28px}.bar strong{font-size:23px;letter-spacing:.15em}.bar span{margin-left:18px;color:#b8cdc6;font-size:14px}
 .bar div{display:flex;align-items:center;flex-wrap:wrap;gap:8px}.bar span{margin-left:8px}#settings-open{margin-left:auto;background:#e2f0eb;color:#12231f;border:0;border-radius:8px;padding:9px 12px}#settings{max-width:575px}#pricing-form label{display:grid;gap:6px}#pricing-form button{background:#12231f;color:#fff;border:0;border-radius:8px;padding:10px 12px;margin:0 3px 6px 0}#pricing-form h3{margin-top:24px}
 h1{font-size:clamp(34px,6vw,64px);letter-spacing:-.065em;line-height:1;margin:30px 0 12px} h2{letter-spacing:-.035em} .intro{color:#53635e;margin:0 0 28px}.filters{display:grid;grid-template-columns:1fr auto;gap:12px}input,select{min-width:0;background:white;border:1px solid #ccd5d2;border-radius:8px;padding:13px;color:#182421} .count{color:#53635e;margin:18px 0}
+.material-filter{display:flex;align-items:center;gap:8px;margin-top:12px;flex-wrap:wrap}.material-filter select{max-width:100%}
 .categories{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}.category{background:white;border:1px solid #ccd5d2;border-radius:8px;padding:8px 12px;color:inherit;text-align:left}.category[aria-pressed=true]{background:#12231f;border-color:#12231f;color:white}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(245px,1fr));gap:18px}.card{background:white;border:1px solid #dbe2df;border-radius:12px;overflow:hidden;text-align:left;padding:0;color:inherit;transition:box-shadow .2s,border-color .2s;display:flex;flex-direction:column}.card:hover{border-color:#27987e;box-shadow:0 8px 26px #183d2820}.card img{width:100%;aspect-ratio:4/3;object-fit:cover;background:#e4ebe8}.summary{padding:15px;display:grid;gap:8px;width:100%}.summary b{font-size:21px;color:#125d4c}.summary small{color:#53635e}.name{min-height:3em}
-.data-check{background:#fff4dc;color:#573900;border:1px solid #e9c67c;border-radius:8px;padding:9px 12px;font-size:14px}.data-check ul{margin:6px 0 0;padding-left:20px}.data-check li+li{margin-top:4px}.check-filter{display:flex;gap:8px;align-items:center;margin-top:12px;color:#53635e}.check-filter input{accent-color:#125d4c}
+.data-check{background:#fff4dc;color:#573900;border:1px solid #e9c67c;border-radius:8px;padding:9px 12px;font-size:14px}.supplier-question{display:block;margin-top:5px}.data-check a{display:inline-block;margin-top:8px}.data-check ul{margin:6px 0 0;padding-left:20px}.data-check li+li{margin-top:4px}.check-filter{display:flex;gap:8px;align-items:center;margin-top:12px;color:#53635e}.check-filter input{accent-color:#125d4c}
 .card-costs{display:grid;gap:4px;padding-top:8px;border-top:1px solid #dbe2df;font-size:14px}.card-costs strong{font-size:16px;color:#125d4c}
 dialog{border:0;border-radius:14px;padding:0;width:min(960px,calc(100% - 24px));max-height:90vh;color:inherit;box-shadow:0 20px 80px #0005}dialog::backdrop{background:#12231fbb}.modal{padding:24px}.close{position:sticky;top:8px;float:right;z-index:1;background:#12231f;color:white;border:0;border-radius:8px;padding:9px 13px}.detail{clear:both;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px}.photo{width:100%;max-height:420px;object-fit:contain;background:#eef1f0;border-radius:8px}.thumbs{display:flex;flex-wrap:wrap;gap:7px;margin-top:8px}.thumbs button{padding:0;border:2px solid transparent;border-radius:7px;overflow:hidden;background:white}.thumbs button[aria-pressed=true]{border-color:#287e6c}.thumbs img{width:61px;height:61px;object-fit:cover;display:block}.price{font-size:28px;font-weight:700;color:#125d4c}.desc{white-space:pre-wrap;overflow-wrap:anywhere}.description-img{display:block;width:min(100%,740px);margin:12px auto;border-radius:6px}dl{margin:0}dt{font-weight:650}dd{margin:3px 0 12px;overflow-wrap:anywhere}a{color:#125d4c}details{border-top:1px solid #dbe2df;padding:12px 0}summary{cursor:pointer;font-weight:650}
 @media(max-width:640px){.bar div,main{padding:14px}.filters,.detail{grid-template-columns:1fr}.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.summary{padding:10px}.modal{padding:14px}}
@@ -22,6 +23,7 @@ dialog{border:0;border-radius:14px;padding:0;width:min(960px,calc(100% - 24px));
 <script defer src="settings.js"></script>
 <script defer src="pricing.js"></script>
 <script defer src="offers.js"></script>
+<script defer src="materials.js"></script>
 </head>
 <body>
 <header class="bar"><div><strong>LANGYU</strong><span>Автодетали · локальная витрина</span> <button id="settings-open" type="button">Настройки цен</button></div></header>
@@ -30,9 +32,11 @@ dialog{border:0;border-radius:14px;padding:0;width:min(960px,calc(100% - 24px));
  <p class="intro">Каталог продавца Langyu на 1688</p>
  <div id="categories" class="categories" role="group" aria-label="Категории товаров"></div>
  <div class="filters"><input id="search" type="search" aria-label="Поиск товаров" placeholder="Название, модель авто или ID"><select id="order" aria-label="Сортировка"><option value="">По умолчанию</option><option value="asc">Цена по возрастанию</option><option value="desc">Цена по убыванию</option></select></div>
+ <label class="material-filter">Материал <select id="material"><option value="">Все материалы</option></select></label>
  <label class="check-filter"><input id="needs-check" type="checkbox"> Только карточки с данными на уточнение</label>
  <p id="count" class="count" aria-live="polite"></p>
  <section id="grid" class="grid" aria-label="Товары"></section>
+ <div id="load-next"></div>
  <p><button id="more" type="button" hidden>Показать ещё</button></p>
 </main>
 <dialog id="dialog" aria-labelledby="product-title"><div class="modal"><button class="close" type="button">Закрыть</button><div id="product"></div></div></dialog>
@@ -56,7 +60,15 @@ document.addEventListener('DOMContentLoaded', () => {
  const grid=$('grid'), search=$('search'), order=$('order'), dialog=$('dialog');
  const settings=$('settings'), form=$('pricing-form');
  let config=window.pricing.load();
- let shown=24;
+ const pageSize=24;
+ let shown=pageSize;
+ const sentinel=$('load-next');
+ const more=$('more');
+ const observer=typeof IntersectionObserver==='function'
+   ? new IntersectionObserver(entries=>{
+       if(entries.some(entry=>entry.isIntersecting) && !sentinel.hidden) loadMore();
+     },{rootMargin:'0px 0px 300px 0px'})
+   : null;
  let selectedCategory='';
  // Порядок правил учитывает названия, в которых упомянуто несколько деталей.
  const categoryRules = [
@@ -83,6 +95,15 @@ document.addEventListener('DOMContentLoaded', () => {
  }
  const {expand, minimumOrder, hasVariants, unitPrice, packageFor}=window.catalogOffers;
  const products=window.products.flatMap(expand);
+ const material=$('material');
+ const productOptions=new Map(products.map(row=>[row,window.catalogMaterials.options(row)]));
+ const availableMaterials=new Set([...productOptions.values()].flatMap(options=>options.flatMap(option=>option.materials)));
+ for(const [key,label] of window.catalogMaterials.labels){
+   if(!availableMaterials.has(key)) continue;
+   const option=el('option',label);
+   option.value=key;
+   material.append(option);
+ }
  const productCategories=new Map();
  const categoryCounts=new Map();
  for(const row of products){
@@ -113,14 +134,15 @@ document.addEventListener('DOMContentLoaded', () => {
  const range = (min,max,format) => min===max ? format(min) : format(min)+'–'+format(max);
  const rub = value => money(Math.round(value))+' ₽';
  const amount = value => config.rate ? rub(value*config.rate) : '¥'+money(value);
- const priceLabel = (row, sku) => {
-   const base=unitPrice(row,sku);
-   const from=!sku && row.skus?.some(option=>unitPrice(row,option)>base);
+ const optionPrice = (row, options) => Math.min(...options.map(option=>unitPrice(row,option.sku)));
+ const priceLabel = (row, sku, options) => {
+   const base=options ? optionPrice(row,options) : unitPrice(row,sku);
+   const from=options?.some(option=>unitPrice(row,option.sku)>base);
    const minimum=minimumOrder(row);
    return (from?'от ':'')+amount(base)+' за 1 шт.'+(minimum>1?' (от '+minimum+' шт.)':'');
  };
  const suspiciousWeight = weight => weight>=100000;
- function dataChecks(row, sku) {
+ function supplierQuestions(row, sku, materials) {
    const pack=packageFor(row,sku);
    const weight=pack?.weight_g;
    const dims=[pack?.length_cm,pack?.width_cm,pack?.height_cm];
@@ -130,52 +152,56 @@ document.addEventListener('DOMContentLoaded', () => {
      tier.min_quantity<=quantity && (tier.max_quantity==null || tier.max_quantity>=quantity));
    if(!Number.isFinite(unitPrice(row,sku)) ||
       (sku && sku.price==null && !hasTier && (row.price_min!==row.price_max || row.skus.some(option=>option.price!=null)))){
-     notes.push(['Цена','Уточните розничную цену выбранного исполнения у продавца.']);
+     notes.push('Сколько стоит одна деталь в этом исполнении?');
    } else if(row.price_tiers?.length && !hasTier){
-     notes.push(['Цена','Нет подтверждённой цены для минимального заказа.']);
+     notes.push('Сколько стоит одна деталь при минимальном заказе?');
    }
    if(sku && /^(?:[A-Z]|MG)款$/i.test(sku.name)){
-     notes.push(['Исполнение','Уточните, чем вариант «'+sku.name+'» отличается от остальных.']);
+     notes.push('Чем отличается вариант «'+sku.name.replace(/款$/,'')+'»?');
+   }
+   if(!materials.length) notes.push('Из какого материала сделана эта деталь?');
+   if(row.displayTitle && row.category==='Комплекты обвеса'){
+     notes.push('Какие детали входят в этот комплект?');
    }
    if(!Number.isFinite(weight) || weight<=0){
-     notes.push(['Вес','Уточните вес детали с упаковкой.']);
+     notes.push('Сколько весит деталь вместе с упаковкой?');
    } else if(weight<100 || suspiciousWeight(weight)){
-     notes.push(['Вес','В выгрузке указано '+money(weight/1000)+' кг с упаковкой. Проверьте значение и единицы измерения.']);
-   } else if(hasVariants(row) && sku && pack.sku!==sku.name){
-     notes.push(['Вес','Указан общий вес объявления. Уточните вес упаковки выбранного исполнения.']);
+     notes.push('Вес с упаковкой действительно '+money(weight/1000)+' кг?');
    }
    if(dims.some(n=>!Number.isFinite(n)||n<=0)){
-     notes.push(['Габариты','Уточните длину, ширину и высоту упаковки для расчёта объёмного веса.']);
+     notes.push('Какие длина, ширина и высота упаковки в сантиметрах?');
    } else if(dims.some(n=>n>240)){
-     notes.push(['Габариты','В выгрузке указано '+dims.join(' × ')+' см. Проверьте размеры и единицы измерения.']);
+     notes.push('Размер упаковки действительно '+dims.join(' × ')+' см?');
    }
    return notes;
  }
- const checksByProduct=new Map(products.map(row=>{
-   const options=row.skus?.length ? row.skus : [undefined];
-   return [row,[...new Set(options.flatMap(sku=>dataChecks(row,sku).map(([type])=>type)))]];
- }));
- function checkNotice(row, sku) {
-   const notes=dataChecks(row,sku);
-   if(!notes.length) return null;
-   const notice=el('aside',null,'data-check');
-   const list=el('ul');
-   for(const [type,message] of notes) list.append(el('li',type+'. '+message));
-   notice.append(el('strong','Нужно уточнить у продавца'),list);
+ for(const [row,options] of productOptions){
+   for(const option of options) option.questions=supplierQuestions(row,option.sku,option.materials);
+ }
+ function checkNotice(questions, compact=false) {
+   if(!questions.length) return null;
+   const notice=el(compact?'span':'aside',null,'data-check');
+   notice.append(el('strong','Вопросы поставщику'));
+   if(compact){
+     for(const question of questions) notice.append(el('span',question,'supplier-question'));
+   } else {
+     const list=el('ul');
+     for(const question of questions) list.append(el('li',question));
+     notice.append(list);
+   }
    return notice;
  }
  const hasDelivery = () => Boolean(config.flat || config.perKg);
  const delivery = pack => config.perKg && suspiciousWeight(pack?.weight_g)
    ? null
    : window.pricing.delivery(pack,config);
- function cardCosts(row){
+ function cardCosts(row, options){
    const costs=el('span',null,'card-costs');
    if(!hasDelivery()){
      costs.append(el('span','Доставка: тариф не задан'));
      return costs;
    }
-   const options=row.skus?.length ? row.skus : [undefined];
-   const estimates=options.map(sku=>({
+   const estimates=options.map(({sku})=>({
      base:unitPrice(row,sku),
      shipping:delivery(packageFor(row,sku)),
    }));
@@ -252,8 +278,17 @@ document.addEventListener('DOMContentLoaded', () => {
    }
    info.append(el('div',priceLabel(row,sku),'price'));
    if(config.rate) info.append(el('small','¥'+money(unitPrice(row,sku))+' за 1 шт.'));
-   const notice=checkNotice(row,sku);
-   if(notice) info.append(notice);
+   const notice=checkNotice(productOptions.get(row)[selectedIndex].questions);
+   if(notice){
+     if(/^https:\/\//.test(row.url??'')){
+       const source=el('a','Открыть объявление на 1688');
+       source.href=row.url;
+       source.target='_blank';
+       source.rel='noopener noreferrer';
+       notice.append(source);
+     }
+     info.append(notice);
+   }
    if(fits) info.append(el('p','Совместимость по карточке продавца: '+fits));
    if(!window.ru[row.id]) info.append(el('p','Название и характеристики переведены автоматически. Совместимость требует сверки.'));
    if(note) info.append(el('p',note));
@@ -273,6 +308,7 @@ document.addEventListener('DOMContentLoaded', () => {
      ? rub(unitPrice(row,sku)*config.rate+shipping)
      : null;
    info.append(details('Упаковка и доставка',fields([
+     ['Данные упаковки',pack && hasVariants(row) && !pack.sku ? 'Общие для всех исполнений объявления' : null],
      ['Вес',weight>0 ? money(weight/1000)+' кг по данным продавца' : 'Вес не указан'],
      ['Габариты',dims.every(n=>n>0) ? dims.join(' × ')+' см' : null],
      ['Проверка данных',weight>0 && weight<100 ? 'Вес требует проверки' : null],
@@ -309,7 +345,7 @@ document.addEventListener('DOMContentLoaded', () => {
      [review.rating+' / 5',review.publishedAt,review.isTemplateText?'Шаблонный отзыв':''].filter(Boolean).join(' · '),review.text
    ]))));
    for(const [label,url] of [['Карточка на 1688',row.url],['Видео продавца',row.video_url]]){
-     if(!/^https:\/\//.test(url??'')) continue;
+     if((notice && url===row.url) || !/^https:\/\//.test(url??'')) continue;
      const link=el('a',label); link.href=url; link.target='_blank'; link.rel='noopener noreferrer';
      const line=el('p'); line.append(link); info.append(line);
    }
@@ -327,30 +363,36 @@ document.addEventListener('DOMContentLoaded', () => {
    if(!dialog.open){ dialog.showModal(); dialog.scrollTop=0; }
    if(restoreFocus) picker?.focus();
  }
- function render(){
+ function render(start=0){
    const brands={bmw:'宝马',mercedes:'奔驰',audi:'奥迪',toyota:'丰田',porsche:'保时捷',mazda:'马自达',ford:'福特',tesla:'特斯拉'};
    const terms=search.value.toLowerCase().trim().split(/\s+/).filter(Boolean);
    const onlyNeedsCheck=$('needs-check').checked;
-   const results=products.filter(row=>{
-     if(onlyNeedsCheck && !checksByProduct.get(row).length) return false;
-     if(selectedCategory && productCategories.get(row)!==selectedCategory) return false;
+   const results=products.flatMap(row=>{
+     if(selectedCategory && productCategories.get(row)!==selectedCategory) return [];
      const text=row.search+' '+translation(row).flat().join(' ').toLowerCase()+' '+(row.skus??[]).map((sku,index)=>skuLabel(row,sku,index)).join(' ').toLowerCase();
-     return terms.every(term=>text.includes(term)||text.includes(brands[term]??term));
+     if(!terms.every(term=>text.includes(term)||text.includes(brands[term]??term))) return [];
+     const options=productOptions.get(row).filter(option=>!material.value || option.materials.includes(material.value));
+     const questions=[...new Set(options.flatMap(option=>option.questions))];
+     return options.length && (!onlyNeedsCheck || questions.length) ? [{row,options,questions,price:optionPrice(row,options)}] : [];
    });
-   if(order.value) results.sort((a,b)=>(order.value==='asc'?1:-1)*(unitPrice(a)-unitPrice(b)));
+   if(order.value) results.sort((a,b)=>(order.value==='asc'?1:-1)*(a.price-b.price));
    $('count').textContent='Показано '+Math.min(shown,results.length)+' из '+results.length+' · Всего товаров: '+products.length;
-   $('more').hidden=shown>=results.length;
-   grid.replaceChildren();
-   if(!results.length) grid.append(el('p','По этому запросу товаров нет.'));
-   for(const row of results.slice(0,shown)){
+   const hasMore=shown<results.length;
+   sentinel.hidden=!hasMore;
+   more.hidden=!hasMore || Boolean(observer);
+   if(!start) grid.replaceChildren();
+   if(!results.length && !start) grid.append(el('p','По этому запросу товаров нет.'));
+   for(const {row,options,questions,price} of results.slice(start,shown)){
      const card=el('button',null,'card'); card.type='button';
      const summary=el('span',null,'summary');
-     summary.append(el('span',translation(row)[0],'name'),el('b',priceLabel(row)));
-     const checks=checksByProduct.get(row);
-     if(checks.length) summary.append(el('span','Уточнить: '+checks.join(', ').toLowerCase(),'data-check'));
-     summary.append(cardCosts(row),el('small',row.id));
-     card.append(photo(row.photos[0],''),summary); card.addEventListener('click',()=>open(row)); grid.append(card);
+     summary.append(el('span',translation(row)[0],'name'),el('b',priceLabel(row,undefined,options)));
+     const notice=checkNotice(questions,true);
+     if(notice) summary.append(notice);
+     summary.append(cardCosts(row,options),el('small',row.id));
+     card.append(photo(row.photos[0],''),summary); card.addEventListener('click',()=>open(row,material.value ? options.find(option=>unitPrice(row,option.sku)===price).index : 0)); grid.append(card);
    }
+   observer?.unobserve(sentinel);
+   if(hasMore) observer?.observe(sentinel);
  }
  dialog.querySelector('.close').onclick=()=>dialog.close();
  dialog.addEventListener('click',event=>{if(event.target===dialog)dialog.close();});
@@ -376,7 +418,7 @@ document.addEventListener('DOMContentLoaded', () => {
    setTimeout(()=>URL.revokeObjectURL(url),1000);
    $('settings-status').textContent='Для общего курса замените settings.js в папке размещённой витрины.';
  };
- const reset=()=>{shown=24;render();};
+ const reset=()=>{shown=pageSize;render();};
  const categories=$('categories');
  const categoryLabels=[...categoryCounts.keys()].sort((a,b)=>categoryCounts.get(b)-categoryCounts.get(a));
  for(const category of ['',...categoryLabels]){
@@ -392,7 +434,13 @@ document.addEventListener('DOMContentLoaded', () => {
    });
    categories.append(button);
  }
- $('more').onclick=()=>{shown+=24;render();};
+ function loadMore(){
+   const start=shown;
+   shown+=pageSize;
+   render(start);
+ }
+ more.onclick=loadMore;
+ material.addEventListener('change',reset);
  $('needs-check').addEventListener('change',reset);
  search.addEventListener('input',reset); order.addEventListener('change',reset); render();
 });
