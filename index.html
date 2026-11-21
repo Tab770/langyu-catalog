@@ -251,7 +251,7 @@ document.addEventListener('DOMContentLoaded', () => {
    const section=el('section',null,'avito-description');
    section.append(el('h2','Описание для Авито'),
      el('p',description||'Описание пока не добавлено.'),
-     el('strong',Number.isFinite(priceRub)&&priceRub>0 ? 'Цена для Авито: '+rub(priceRub) : 'Цена для Авито пока не задана.'));
+     el('strong',Number.isFinite(priceRub)&&priceRub>0 ? 'Цена для Авито: '+rub(priceRub) : 'Цена для Авито не рассчитана. Проверьте цену товара и размеры упаковки.'));
    return section;
  }
  function open(row, selectedIndex=0, restoreFocus=false) {
