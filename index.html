@@ -20,6 +20,7 @@ dialog{border:0;border-radius:14px;padding:0;width:min(960px,calc(100% - 24px));
 <script defer src="localize.js"></script>
 <script defer src="settings.js"></script>
 <script defer src="pricing.js"></script>
+<script defer src="offers.js"></script>
 </head>
 <body>
 <header class="bar"><div><strong>LANGYU</strong><span>Автодетали · локальная витрина</span> <button id="settings-open" type="button">Настройки цен</button></div></header>
@@ -78,42 +79,52 @@ document.addEventListener('DOMContentLoaded', () => {
  function categoryFor(row) {
    return categoryRules.find(([,pattern])=>pattern.test(row.title))?.[0] ?? otherCategory;
  }
+ const {expand, minimumOrder, hasVariants, unitPrice, packageFor}=window.catalogOffers;
+ const products=window.products.flatMap(expand);
  const productCategories=new Map();
  const categoryCounts=new Map();
- for(const row of window.products){
-   const category=categoryFor(row);
-   productCategories.set(row.id,category);
+ for(const row of products){
+   const category=row.category ?? categoryFor(row);
+   productCategories.set(row,category);
    categoryCounts.set(category,(categoryCounts.get(category)??0)+1);
  }
  const {translate, title: ruTitle, dropship, shop, labels}=window.catalogRu;
- const translation = row => window.ru[row.id] ?? [ruTitle(row),'','',[],null,null];
+ const translation = row => row.displayTitle ? [row.displayTitle,'','',[],null,null] : window.ru[row.id] ?? [ruTitle(row),'','',[],null,null];
+ const skuLabel = (row, sku, index) => {
+   const label=translation(row)[3][index] ?? translate(sku.name);
+   return label==='Нужна проверка перевода' ? sku.name : label;
+ };
  const money = value => new Intl.NumberFormat('ru-RU',{maximumFractionDigits:2}).format(value);
  const range = (min,max,format) => min===max ? format(min) : format(min)+'–'+format(max);
  const rub = value => money(Math.round(value))+' ₽';
  const amount = value => config.rate ? rub(value*config.rate) : '¥'+money(value);
- const limits = row => [row.price_min ?? row.price, row.price_max ?? row.price_min ?? row.price];
- const price = row => range(...limits(row),amount);
- const packagesFor = row => row.package_sizes?.length ? row.package_sizes : [{weight_g:row.unit_weight_kg*1000}];
+ const priceLabel = (row, sku) => {
+   const base=unitPrice(row,sku);
+   const from=!sku && row.skus?.some(option=>unitPrice(row,option)>base);
+   const minimum=minimumOrder(row);
+   return (from?'от ':'')+amount(base)+' за 1 шт.'+(minimum>1?' (от '+minimum+' шт.)':'');
+ };
  const hasDelivery = () => Boolean(config.flat || config.perKg);
- const costRange = values => range(Math.min(...values),Math.max(...values),rub);
  function cardCosts(row){
    const costs=el('span',null,'card-costs');
    if(!hasDelivery()){
-     costs.append(el('span','Доставка: тариф не задан')); return costs;
+     costs.append(el('span','Доставка: тариф не задан'));
+     return costs;
    }
-   const options=packagesFor(row).map(pack=>{
-     const shipping=window.pricing.delivery(pack,config);
-     const skuPrice=pack.sku ? row.skus?.find(sku=>sku.name===pack.sku)?.price : null;
-     const prices=skuPrice==null?limits(row):[skuPrice];
-     return {shipping,prices};
-   });
-   if(options.some(option=>option.shipping===null)){
-     costs.append(el('span','Доставка: уточните вес или габариты')); return costs;
+   const options=row.skus?.length ? row.skus : [undefined];
+   const estimates=options.map(sku=>({
+     base:unitPrice(row,sku),
+     shipping:window.pricing.delivery(packageFor(row,sku),config),
+   }));
+   if(estimates.some(option=>option.shipping===null)){
+     costs.append(el('span','Доставка: уточните вес или габариты'));
+     return costs;
    }
-   costs.append(el('span','Доставка ≈ '+costRange(options.map(option=>option.shipping))));
-   if(config.rate) {
-     const totals=options.flatMap(({prices,shipping})=>prices.map(value=>value*config.rate+shipping));
-     costs.append(el('strong','С доставкой ≈ '+costRange(totals)));
+   const costRange=values=>range(Math.min(...values),Math.max(...values),rub);
+   costs.append(el('span','Доставка ≈ '+costRange(estimates.map(option=>option.shipping))+' за 1 шт.'));
+   if(config.rate){
+     const totals=estimates.map(({base,shipping})=>base*config.rate+shipping);
+     costs.append(el('strong','С доставкой ≈ '+costRange(totals)+' за 1 шт.'));
    } else costs.append(el('span','Для итога задайте курс юаня'));
    return costs;
  }
@@ -143,7 +154,9 @@ document.addEventListener('DOMContentLoaded', () => {
    }
    return list;
  }
- function open(row) {
+ function open(row, selectedIndex=0, restoreFocus=false) {
+   const sku=row.skus?.[selectedIndex];
+   let picker;
    const [name, fits, note, skuNames, article, translatedDescription] = translation(row);
    const container=$('product'); container.replaceChildren();
    const layout=el('div',null,'detail'), gallery=el('div'), info=el('div');
@@ -160,43 +173,48 @@ document.addEventListener('DOMContentLoaded', () => {
      thumbs.append(btn);
    });
    gallery.append(main,thumbs);
-   info.append(el('div','1688 · '+row.id),title,el('div',price(row),'price'));
-   if(config.rate) info.append(el('small',range(...limits(row),n=>'¥'+money(n))+' · цена товара'));
+   info.append(el('div','1688 · '+row.id),title);
+   if(hasVariants(row)){
+     const label=el('label','Исполнение ');
+     picker=el('select');
+     for(const [index,option] of row.skus.entries()){
+       const item=el('option',skuLabel(row,option,index));
+       item.value=String(index);
+       picker.append(item);
+     }
+     picker.value=String(selectedIndex);
+     picker.addEventListener('change',()=>open(row,Number(picker.value),true));
+     label.append(picker);
+     info.append(label);
+   }
+   info.append(el('div',priceLabel(row,sku),'price'));
+   if(config.rate) info.append(el('small','¥'+money(unitPrice(row,sku))+' за 1 шт.'));
    if(fits) info.append(el('p','Совместимость по карточке продавца: '+fits));
    if(!window.ru[row.id]) info.append(el('p','Название и характеристики переведены автоматически. Совместимость требует сверки.'));
    if(note) info.append(el('p',note));
    if(row.moq) info.append(el('p','Минимальный заказ: '+row.moq+' '+(translate(row.unit) || 'шт.')));
-   if(row.unit_weight_kg>0) info.append(el('p','Вес с упаковкой по данным продавца: '+money(row.unit_weight_kg)+' кг'+(row.unit_weight_kg<0.1?' · требует проверки':'')));
+   if(!sku && row.unit_weight_kg>0) info.append(el('p','Вес с упаковкой по данным продавца: '+money(row.unit_weight_kg)+' кг'+(row.unit_weight_kg<0.1?' · требует проверки':'')));
    if(row.price_tiers?.length) {
      const list=el('ul');
      for(const tier of row.price_tiers) list.append(el('li', 'От '+tier.min_quantity+' шт. — '+amount(tier.price)));
      info.append(details('Оптовые цены',list));
    }
-   if(row.skus?.length){
-     const list=el('ul');
-     row.skus.forEach((sku,i)=>list.append(el('li',[skuNames[i]??translate(sku.name),sku.price==null?'':amount(sku.price),sku.stock==null?'':'Остаток: '+sku.stock].filter(Boolean).join(' · '))));
-     info.append(details('Варианты',list));
-   }
-   const packages=el('ul');
-   const packs=packagesFor(row);
-   for(const pack of packs){
-     const skuIndex=pack.sku ? row.skus?.findIndex(sku=>sku.name===pack.sku) : -1;
-     const dims=[pack.length_cm,pack.width_cm,pack.height_cm];
-     const shipping=window.pricing.delivery(pack,config);
-     const skuPrice=row.skus?.[skuIndex]?.price;
-     const total=config.rate && (config.flat||config.perKg) && shipping!==null
-       ? range(...(skuPrice==null?limits(row):[skuPrice,skuPrice]),n=>rub(n*config.rate+shipping))
-       : null;
-     packages.append(el('li',[
-       skuNames[skuIndex]??translate(pack.sku),pack.weight_g>0 ? money(pack.weight_g/1000)+' кг по данным продавца' : 'Вес не указан',
-       dims.every(n=>n>0) ? dims.join(' × ')+' см' : null,
-       pack.weight_g>0 && pack.weight_g<100 ? 'Вес требует проверки' : null,
-       config.flat||config.perKg ? shipping===null ? 'Уточните вес или габариты для расчёта' : 'Доставка ≈ '+rub(shipping) : null,
-       total ? 'С доставкой ≈ '+total : null
-     ].filter(Boolean).join(' · ')));
-   }
-   info.append(details('Упаковка и доставка',packages));
-   if(row.specs?.length){
+   if(sku?.stock!=null) info.append(el('p','Остаток по данным продавца: '+sku.stock));
+   const pack=packageFor(row,sku);
+   const weight=pack?.weight_g;
+   const dims=[pack?.length_cm,pack?.width_cm,pack?.height_cm];
+   const shipping=window.pricing.delivery(pack,config);
+   const total=config.rate && hasDelivery() && shipping!==null
+     ? rub(unitPrice(row,sku)*config.rate+shipping)
+     : null;
+   info.append(details('Упаковка и доставка',fields([
+     ['Вес',weight>0 ? money(weight/1000)+' кг по данным продавца' : 'Вес не указан'],
+     ['Габариты',dims.every(n=>n>0) ? dims.join(' × ')+' см' : null],
+     ['Проверка данных',weight>0 && weight<100 ? 'Вес требует проверки' : null],
+     ['Доставка за 1 шт.',hasDelivery() ? shipping===null ? 'Уточните вес или габариты для расчёта' : '≈ '+rub(shipping) : null],
+     ['С доставкой за 1 шт.',total ? '≈ '+total : null],
+   ])));
+   if(!row.displayTitle && row.specs?.length){
      const list=el('dl');
      for(const spec of row.specs){
        const value=spec.name==='货号'&&article?article:spec.name==='规格'&&skuNames.length?skuNames.join('; '):window.specRu.values[spec.value]??spec.value;
@@ -230,31 +248,37 @@ document.addEventListener('DOMContentLoaded', () => {
      const link=el('a',label); link.href=url; link.target='_blank'; link.rel='noopener noreferrer';
      const line=el('p'); line.append(link); info.append(line);
    }
-   layout.append(gallery,info); container.append(layout,el('h2','Описание продавца'));
+   layout.append(gallery,info); container.append(layout);
+   if(sku && (hasVariants(row)||row.displayTitle)){
+     container.append(el('h2','Выбранное исполнение'),el('p',skuLabel(row,sku,selectedIndex)));
+   }
+   container.append(el('h2','Описание продавца'));
+   if(row.displayTitle) container.append(el('p','Описание и изображения продавца относятся к общему объявлению 1688.'));
    if(translatedDescription) container.append(el('p',translatedDescription,'desc'));
    else if(row.description) container.append(el('p',translate(row.description),'desc'));
    else if(row.descriptionPhotos.length) container.append(el('p','Фотографии продавца из раздела описания.'));
    else container.append(el('p','В выгрузке нет отдельного описания изделия.'));
    for(const [i,src] of row.descriptionPhotos.entries()) container.append(imageLink(src,'Изображение описания '+(i+1),'description-img'));
-   dialog.showModal(); dialog.scrollTop=0;
+   if(!dialog.open){ dialog.showModal(); dialog.scrollTop=0; }
+   if(restoreFocus) picker?.focus();
  }
  function render(){
    const brands={bmw:'宝马',mercedes:'奔驰',audi:'奥迪',toyota:'丰田',porsche:'保时捷',mazda:'马自达',ford:'福特',tesla:'特斯拉'};
    const terms=search.value.toLowerCase().trim().split(/\s+/).filter(Boolean);
-   const results=window.products.filter(row=>{
-     if(selectedCategory && productCategories.get(row.id)!==selectedCategory) return false;
-     const text=row.search+' '+translation(row).flat().join(' ').toLowerCase();
+   const results=products.filter(row=>{
+     if(selectedCategory && productCategories.get(row)!==selectedCategory) return false;
+     const text=row.search+' '+translation(row).flat().join(' ').toLowerCase()+' '+(row.skus??[]).map((sku,index)=>skuLabel(row,sku,index)).join(' ').toLowerCase();
      return terms.every(term=>text.includes(term)||text.includes(brands[term]??term));
    });
-   if(order.value) results.sort((a,b)=>(order.value==='asc'?1:-1)*((a.price_min??a.price)-(b.price_min??b.price)));
-   $('count').textContent='Показано '+Math.min(shown,results.length)+' из '+results.length+' · Всего товаров: '+window.products.length;
+   if(order.value) results.sort((a,b)=>(order.value==='asc'?1:-1)*(unitPrice(a)-unitPrice(b)));
+   $('count').textContent='Показано '+Math.min(shown,results.length)+' из '+results.length+' · Всего товаров: '+products.length;
    $('more').hidden=shown>=results.length;
    grid.replaceChildren();
    if(!results.length) grid.append(el('p','По этому запросу товаров нет.'));
    for(const row of results.slice(0,shown)){
      const card=el('button',null,'card'); card.type='button';
      const summary=el('span',null,'summary');
-     summary.append(el('span',translation(row)[0],'name'),el('b',price(row)),cardCosts(row),el('small',row.id));
+     summary.append(el('span',translation(row)[0],'name'),el('b',priceLabel(row)),cardCosts(row),el('small',row.id));
      card.append(photo(row.photos[0],''),summary); card.addEventListener('click',()=>open(row)); grid.append(card);
    }
  }
@@ -286,7 +310,7 @@ document.addEventListener('DOMContentLoaded', () => {
  const categories=$('categories');
  const categoryLabels=[...categoryCounts.keys()].sort((a,b)=>categoryCounts.get(b)-categoryCounts.get(a));
  for(const category of ['',...categoryLabels]){
-   const count=category ? categoryCounts.get(category) : window.products.length;
+   const count=category ? categoryCounts.get(category) : products.length;
    if(!count) continue;
    const button=el('button',(category||'Все товары')+' · '+count,'category');
    button.type='button';
