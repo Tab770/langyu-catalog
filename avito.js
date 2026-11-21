@@ -4,6 +4,8 @@
   // description using its original SKU name as the key.
   const listings = {};
   const rates = {rate: 15, usdRate: 100, usdPerM3: 300};
+  const markup = 0.25;
+  const priceIncrementRub = 100;
 
   function listingFor(row, sku) {
     const key = row.displayTitle
@@ -25,14 +27,15 @@
       ...(needsPrice ? ['Уточните цену одной детали в этом исполнении.'] : []),
       ...(dimensions.length ? ['Уточните '+new Intl.ListFormat('ru').format(dimensions)+' упаковки в сантиметрах.'] : []),
     ];
+    const totalRub = goodsRub!==null && shipping!==null ? goodsRub + shipping : null;
     return {
       goodsRub,
       missing,
       shippingRub: shipping,
       description: variant?.description ?? listing?.description ?? '',
-      priceRub: goodsRub!==null && shipping!==null
-        ? Math.round(goodsRub + shipping)
-        : null,
+      priceRub: totalRub===null ? null : Math.round(totalRub),
+      avitoPriceRub: totalRub===null ? null
+        : Math.round(totalRub * (1 + markup) / priceIncrementRub) * priceIncrementRub,
     };
   }
 
