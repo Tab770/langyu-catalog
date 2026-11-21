@@ -16,6 +16,7 @@ h1{font-size:clamp(34px,6vw,64px);letter-spacing:-.065em;line-height:1;margin:30
 .card-costs{display:grid;gap:4px;padding-top:8px;border-top:1px solid #dbe2df;font-size:14px}.card-costs strong{font-size:16px;color:#125d4c}
 dialog{border:0;border-radius:14px;padding:0;width:min(960px,calc(100% - 24px));max-height:90vh;color:inherit;box-shadow:0 20px 80px #0005}dialog::backdrop{background:#12231fbb}.modal{padding:24px}.close{position:sticky;top:8px;float:right;z-index:1;background:#12231f;color:white;border:0;border-radius:8px;padding:9px 13px}.detail{clear:both;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px}.photo{width:100%;max-height:420px;object-fit:contain;background:#eef1f0;border-radius:8px}.thumbs{display:flex;flex-wrap:wrap;gap:7px;margin-top:8px}.thumbs button{padding:0;border:2px solid transparent;border-radius:7px;overflow:hidden;background:white}.thumbs button[aria-pressed=true]{border-color:#287e6c}.thumbs img{width:61px;height:61px;object-fit:cover;display:block}.price{font-size:28px;font-weight:700;color:#125d4c}.desc{white-space:pre-wrap;overflow-wrap:anywhere}.description-img{display:block;width:min(100%,740px);margin:12px auto;border-radius:6px}dl{margin:0}dt{font-weight:650}dd{margin:3px 0 12px;overflow-wrap:anywhere}a{color:#125d4c}details{border-top:1px solid #dbe2df;padding:12px 0}summary{cursor:pointer;font-weight:650}
 @media(max-width:640px){.bar div,main{padding:14px}.filters,.detail{grid-template-columns:1fr}.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.summary{padding:10px}.modal{padding:14px}}
+.avito-description{display:grid;gap:8px;margin-top:24px}.avito-description label{font-size:1.15rem;font-weight:650}.avito-description textarea{box-sizing:border-box;width:100%;min-height:120px;padding:12px;border:1px solid #ccd5d2;border-radius:8px;resize:vertical;font:inherit;color:inherit}.avito-description textarea:focus-visible{outline:3px solid #27987e;outline-offset:3px}.avito-description small{color:#53635e}
 </style>
 <script defer src="products.js"></script>
 <script defer src="ru.js"></script>
@@ -44,11 +45,9 @@ dialog{border:0;border-radius:14px;padding:0;width:min(960px,calc(100% - 24px));
  <form id="pricing-form">
   <h2 id="settings-title">Курс и доставка</h2>
   <p><label>Рублей за 1 юань <input name="rate" type="number" min="0" step="any" required></label></p>
-  <h3>Доставка на одну единицу товара</h3>
-  <p><label>Фиксированная часть, ₽ <input name="flat" type="number" min="0" step="any" required></label></p>
-  <p><label>Тариф за кг, ₽ <input name="perKg" type="number" min="0" step="any" required></label></p>
-  <p><label>Делитель объёмного веса, см³/кг <input name="divisor" type="number" min="0" step="any" required></label></p>
-  <p>Введите делитель перевозчика. При нуле используется заявленный вес упаковки. При нулевом тарифе за кг применяется только фиксированная часть.</p>
+  <p><label>Рублей за 1 доллар <input name="usdRate" type="number" min="0" step="any" required></label></p>
+  <p><label>Доставка, $ за м³ <input name="usdPerM3" type="number" min="0" step="any" required></label></p>
+  <p>Доставка рассчитывается по внешним размерам упаковки. Для пересчёта в рубли укажите оба курса.</p>
   <button type="submit">Применить</button> <button id="settings-close" type="button">Закрыть</button>
   <button id="settings-export" type="button">Скачать общие настройки</button>
   <p id="settings-status" role="status"></p>
@@ -137,7 +136,7 @@ document.addEventListener('DOMContentLoaded', () => {
  const money = value => new Intl.NumberFormat('ru-RU',{maximumFractionDigits:2}).format(value);
  const range = (min,max,format) => min===max ? format(min) : format(min)+'–'+format(max);
  const rub = value => money(Math.round(value))+' ₽';
- const amount = value => config.rate ? rub(value*config.rate) : '¥'+money(value);
+ const amount = value => '¥'+money(value);
  const optionPrice = (row, options) => Math.min(...options.map(option=>unitPrice(row,option.sku)));
  const priceLabel = (row, sku, options) => {
    const base=options ? optionPrice(row,options) : unitPrice(row,sku);
@@ -195,30 +194,29 @@ document.addEventListener('DOMContentLoaded', () => {
    }
    return notice;
  }
- const hasDelivery = () => Boolean(config.flat || config.perKg);
- const delivery = pack => config.perKg && suspiciousWeight(pack?.weight_g)
-   ? null
-   : window.pricing.delivery(pack,config);
  function cardCosts(row, options){
    const costs=el('span',null,'card-costs');
-   if(!hasDelivery()){
-     costs.append(el('span','Доставка: тариф не задан'));
-     return costs;
-   }
-   const estimates=options.map(({sku})=>({
-     base:unitPrice(row,sku),
-     shipping:delivery(packageFor(row,sku)),
-   }));
-   if(estimates.some(option=>option.shipping===null)){
-     costs.append(el('span','Доставка: уточните вес или габариты'));
-     return costs;
-   }
    const costRange=values=>range(Math.min(...values),Math.max(...values),rub);
-   costs.append(el('span','Доставка ≈ '+costRange(estimates.map(option=>option.shipping))+' за 1 шт.'));
-   if(config.rate){
-     const totals=estimates.map(({base,shipping})=>base*config.rate+shipping);
-     costs.append(el('strong','С доставкой ≈ '+costRange(totals)+' за 1 шт.'));
-   } else costs.append(el('span','Для итога задайте курс юаня'));
+   const estimates=options.map(({sku})=>({
+     goods:config.rate ? unitPrice(row,sku)*config.rate : null,
+     shipping:window.pricing.delivery(packageFor(row,sku),config),
+   }));
+   const shipping=estimates.map(option=>option.shipping);
+   costs.append(el('strong','Цена в рублях с доставкой'));
+   costs.append(el('span',config.rate
+     ? 'Товар: '+costRange(estimates.map(option=>option.goods))+' за 1 шт.'
+     : 'Товар: укажите курс юаня'));
+   if(shipping.every(value=>value!==null)){
+     costs.append(el('span','Доставка: ≈ '+costRange(shipping)+' за 1 шт.'));
+     if(config.rate){
+       const totals=estimates.map(option=>option.goods+option.shipping);
+       costs.append(el('strong','Итого: ≈ '+costRange(totals)+' за 1 шт.'));
+     }
+   } else {
+     costs.append(el('span',config.usdRate
+       ? 'Доставка: уточните габариты упаковки'
+       : 'Доставка: укажите курс доллара'));
+   }
    return costs;
  }
  function el(tag, text, className) {
@@ -246,6 +244,40 @@ document.addEventListener('DOMContentLoaded', () => {
      list.append(el('dt',label),el('dd',text,'desc'));
    }
    return list;
+ }
+ const avitoDrafts=new Map();
+ function avitoDescription(row) {
+   const key='langyu-avito-description-v1:'+JSON.stringify(
+     row.displayTitle ? [row.id,row.skus.map(sku=>sku.name).sort()] : [row.id]
+   );
+   const section=el('section',null,'avito-description');
+   const label=el('label','Описание для Авито');
+   const input=el('textarea');
+   input.id='avito-description';
+   input.setAttribute('aria-describedby','avito-description-status');
+   label.htmlFor=input.id;
+   const status=el('small','Черновик сохраняется в этом браузере.');
+   status.id='avito-description-status';
+   status.setAttribute('role','status');
+   let stored='';
+   try {
+     stored=localStorage.getItem(key) ?? '';
+   } catch {
+     status.textContent='Хранилище недоступно. Черновик сохранится до обновления страницы.';
+   }
+   input.value=avitoDrafts.get(key) ?? stored;
+   input.addEventListener('input',()=>{
+     avitoDrafts.set(key,input.value);
+     try {
+       if(input.value) localStorage.setItem(key,input.value);
+       else localStorage.removeItem(key);
+       status.textContent='Черновик сохранён в этом браузере.';
+     } catch {
+       status.textContent='Хранилище недоступно. Черновик сохранится до обновления страницы.';
+     }
+   });
+   section.append(label,input,status);
+   return section;
  }
  function open(row, selectedIndex=0, restoreFocus=false) {
    const sku=row.skus?.[selectedIndex];
@@ -281,7 +313,7 @@ document.addEventListener('DOMContentLoaded', () => {
      info.append(label);
    }
    info.append(el('div',priceLabel(row,sku),'price'));
-   if(config.rate) info.append(el('small','¥'+money(unitPrice(row,sku))+' за 1 шт.'));
+   info.append(cardCosts(row,[{sku}]));
    const notice=checkNotice(productOptions.get(row)[selectedIndex].questions);
    if(notice) info.append(notice);
    if(fits) info.append(el('p','Совместимость по карточке продавца: '+fits));
@@ -298,17 +330,13 @@ document.addEventListener('DOMContentLoaded', () => {
    const pack=packageFor(row,sku);
    const weight=pack?.weight_g;
    const dims=[pack?.length_cm,pack?.width_cm,pack?.height_cm];
-   const shipping=delivery(pack);
-   const total=config.rate && hasDelivery() && shipping!==null
-     ? rub(unitPrice(row,sku)*config.rate+shipping)
-     : null;
+   const cubicMetres=window.pricing.volume(pack);
    info.append(details('Упаковка и доставка',fields([
      ['Данные упаковки',pack && hasVariants(row) && !pack.sku ? 'Общие для всех исполнений объявления' : null],
      ['Вес',weight>0 ? money(weight/1000)+' кг по данным продавца' : 'Вес не указан'],
      ['Габариты',dims.every(n=>n>0) ? dims.join(' × ')+' см' : null],
      ['Проверка данных',weight>0 && weight<100 ? 'Вес требует проверки' : null],
-     ['Доставка за 1 шт.',hasDelivery() ? shipping===null ? 'Уточните вес или габариты для расчёта' : '≈ '+rub(shipping) : null],
-     ['С доставкой за 1 шт.',total ? '≈ '+total : null],
+     ['Объём упаковки',cubicMetres===null ? null : money(cubicMetres)+' м³'],
    ])));
    if(!row.displayTitle && row.specs?.length){
      const list=el('dl');
@@ -348,7 +376,7 @@ document.addEventListener('DOMContentLoaded', () => {
    if(sku && (hasVariants(row)||row.displayTitle)){
      container.append(el('h2','Выбранное исполнение'),el('p',skuLabel(row,sku,selectedIndex)));
    }
-   container.append(el('h2','Описание продавца'));
+   container.append(avitoDescription(row),el('h2','Описание продавца'));
    if(row.displayTitle) container.append(el('p','Описание и изображения продавца относятся к общему объявлению 1688.'));
    if(translatedDescription) container.append(el('p',translatedDescription,'desc'));
    else if(row.description) container.append(el('p',translate(row.description),'desc'));
