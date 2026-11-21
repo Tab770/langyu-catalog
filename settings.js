@@ -1,1 +1,1 @@
-window.catalogSettings = {rate: 0, flat: 0, perKg: 0, divisor: 0};
+window.catalogSettings = {rate: 0, usdRate: 0, usdPerM3: 300};
