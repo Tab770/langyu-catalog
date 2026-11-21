@@ -57,6 +57,7 @@
       ...row,
       displayTitle,
       category,
+      photos: row.photosByCategory?.[category] ?? row.photos,
       skus: variants[index],
       package_sizes: row.package_sizes?.filter(pack => variants[index].some(sku => sku.name === pack.sku)),
     }));
