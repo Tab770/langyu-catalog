@@ -141,8 +141,6 @@ document.addEventListener('DOMContentLoaded', () => {
      notes.push(['Вес','Уточните вес детали с упаковкой.']);
    } else if(weight<100 || suspiciousWeight(weight)){
      notes.push(['Вес','В выгрузке указано '+money(weight/1000)+' кг с упаковкой. Проверьте значение и единицы измерения.']);
-   } else if(hasVariants(row) && sku && pack.sku!==sku.name){
-     notes.push(['Вес','Указан общий вес объявления. Уточните вес упаковки выбранного исполнения.']);
    }
    if(dims.some(n=>!Number.isFinite(n)||n<=0)){
      notes.push(['Габариты','Уточните длину, ширину и высоту упаковки для расчёта объёмного веса.']);
@@ -273,6 +271,7 @@ document.addEventListener('DOMContentLoaded', () => {
      ? rub(unitPrice(row,sku)*config.rate+shipping)
      : null;
    info.append(details('Упаковка и доставка',fields([
+     ['Данные упаковки',pack && hasVariants(row) && !pack.sku ? 'Общие для всех исполнений объявления' : null],
      ['Вес',weight>0 ? money(weight/1000)+' кг по данным продавца' : 'Вес не указан'],
      ['Габариты',dims.every(n=>n>0) ? dims.join(' × ')+' см' : null],
      ['Проверка данных',weight>0 && weight<100 ? 'Вес требует проверки' : null],
