@@ -36,6 +36,7 @@ dialog{border:0;border-radius:14px;padding:0;width:min(960px,calc(100% - 24px));
  <label class="check-filter"><input id="needs-check" type="checkbox"> Только карточки с данными на уточнение</label>
  <p id="count" class="count" aria-live="polite"></p>
  <section id="grid" class="grid" aria-label="Товары"></section>
+ <div id="load-next"></div>
  <p><button id="more" type="button" hidden>Показать ещё</button></p>
 </main>
 <dialog id="dialog" aria-labelledby="product-title"><div class="modal"><button class="close" type="button">Закрыть</button><div id="product"></div></div></dialog>
@@ -59,7 +60,15 @@ document.addEventListener('DOMContentLoaded', () => {
  const grid=$('grid'), search=$('search'), order=$('order'), dialog=$('dialog');
  const settings=$('settings'), form=$('pricing-form');
  let config=window.pricing.load();
- let shown=24;
+ const pageSize=24;
+ let shown=pageSize;
+ const sentinel=$('load-next');
+ const more=$('more');
+ const observer=typeof IntersectionObserver==='function'
+   ? new IntersectionObserver(entries=>{
+       if(entries.some(entry=>entry.isIntersecting) && !sentinel.hidden) loadMore();
+     },{rootMargin:'0px 0px 300px 0px'})
+   : null;
  let selectedCategory='';
  // Порядок правил учитывает названия, в которых упомянуто несколько деталей.
  const categoryRules = [
@@ -339,7 +348,7 @@ document.addEventListener('DOMContentLoaded', () => {
    if(!dialog.open){ dialog.showModal(); dialog.scrollTop=0; }
    if(restoreFocus) picker?.focus();
  }
- function render(){
+ function render(start=0){
    const brands={bmw:'宝马',mercedes:'奔驰',audi:'奥迪',toyota:'丰田',porsche:'保时捷',mazda:'马自达',ford:'福特',tesla:'特斯拉'};
    const terms=search.value.toLowerCase().trim().split(/\s+/).filter(Boolean);
    const onlyNeedsCheck=$('needs-check').checked;
@@ -353,10 +362,12 @@ document.addEventListener('DOMContentLoaded', () => {
    });
    if(order.value) results.sort((a,b)=>(order.value==='asc'?1:-1)*(a.price-b.price));
    $('count').textContent='Показано '+Math.min(shown,results.length)+' из '+results.length+' · Всего товаров: '+products.length;
-   $('more').hidden=shown>=results.length;
-   grid.replaceChildren();
-   if(!results.length) grid.append(el('p','По этому запросу товаров нет.'));
-   for(const {row,options,price} of results.slice(0,shown)){
+   const hasMore=shown<results.length;
+   sentinel.hidden=!hasMore;
+   more.hidden=!hasMore || Boolean(observer);
+   if(!start) grid.replaceChildren();
+   if(!results.length && !start) grid.append(el('p','По этому запросу товаров нет.'));
+   for(const {row,options,price} of results.slice(start,shown)){
      const card=el('button',null,'card'); card.type='button';
      const summary=el('span',null,'summary');
      summary.append(el('span',translation(row)[0],'name'),el('b',priceLabel(row,undefined,options)));
@@ -365,6 +376,8 @@ document.addEventListener('DOMContentLoaded', () => {
      summary.append(cardCosts(row,options),el('small',row.id));
      card.append(photo(row.photos[0],''),summary); card.addEventListener('click',()=>open(row,material.value ? options.find(option=>unitPrice(row,option.sku)===price).index : 0)); grid.append(card);
    }
+   observer?.unobserve(sentinel);
+   if(hasMore) observer?.observe(sentinel);
  }
  dialog.querySelector('.close').onclick=()=>dialog.close();
  dialog.addEventListener('click',event=>{if(event.target===dialog)dialog.close();});
@@ -390,7 +403,7 @@ document.addEventListener('DOMContentLoaded', () => {
    setTimeout(()=>URL.revokeObjectURL(url),1000);
    $('settings-status').textContent='Для общего курса замените settings.js в папке размещённой витрины.';
  };
- const reset=()=>{shown=24;render();};
+ const reset=()=>{shown=pageSize;render();};
  const categories=$('categories');
  const categoryLabels=[...categoryCounts.keys()].sort((a,b)=>categoryCounts.get(b)-categoryCounts.get(a));
  for(const category of ['',...categoryLabels]){
@@ -406,7 +419,12 @@ document.addEventListener('DOMContentLoaded', () => {
    });
    categories.append(button);
  }
- $('more').onclick=()=>{shown+=24;render();};
+ function loadMore(){
+   const start=shown;
+   shown+=pageSize;
+   render(start);
+ }
+ more.onclick=loadMore;
  material.addEventListener('change',reset);
  $('needs-check').addEventListener('change',reset);
  search.addEventListener('input',reset); order.addEventListener('change',reset); render();
