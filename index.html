@@ -246,10 +246,12 @@ document.addEventListener('DOMContentLoaded', () => {
    }
    return list;
  }
- function avitoDescription(row) {
+ function avitoDescription(row, sku) {
+   const {description,priceRub}=window.catalogAvito.listingFor(row,sku);
    const section=el('section',null,'avito-description');
    section.append(el('h2','Описание для Авито'),
-     el('p',window.avitoDescription(row)||'Описание пока не добавлено.'));
+     el('p',description||'Описание пока не добавлено.'),
+     el('strong',Number.isFinite(priceRub)&&priceRub>0 ? 'Цена для Авито: '+rub(priceRub) : 'Цена для Авито пока не задана.'));
    return section;
  }
  function open(row, selectedIndex=0, restoreFocus=false) {
@@ -349,7 +351,7 @@ document.addEventListener('DOMContentLoaded', () => {
    if(sku && (hasVariants(row)||row.displayTitle)){
      container.append(el('h2','Выбранное исполнение'),el('p',skuLabel(row,sku,selectedIndex)));
    }
-   container.append(avitoDescription(row),el('h2','Описание продавца'));
+   container.append(avitoDescription(row,sku),el('h2','Описание продавца'));
    if(row.displayTitle) container.append(el('p','Описание и изображения продавца относятся к общему объявлению 1688.'));
    if(translatedDescription) container.append(el('p',translatedDescription,'desc'));
    else if(row.description) container.append(el('p',translate(row.description),'desc'));
