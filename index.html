@@ -16,7 +16,7 @@ h1{font-size:clamp(34px,6vw,64px);letter-spacing:-.065em;line-height:1;margin:30
 .card-costs{display:grid;gap:4px;padding-top:8px;border-top:1px solid #dbe2df;font-size:14px}.card-costs strong{font-size:16px;color:#125d4c}
 dialog{border:0;border-radius:14px;padding:0;width:min(960px,calc(100% - 24px));max-height:90vh;color:inherit;box-shadow:0 20px 80px #0005}dialog::backdrop{background:#12231fbb}.modal{padding:24px}.close{position:sticky;top:8px;float:right;z-index:1;background:#12231f;color:white;border:0;border-radius:8px;padding:9px 13px}.detail{clear:both;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px}.photo{width:100%;max-height:420px;object-fit:contain;background:#eef1f0;border-radius:8px}.thumbs{display:flex;flex-wrap:wrap;gap:7px;margin-top:8px}.thumbs button{padding:0;border:2px solid transparent;border-radius:7px;overflow:hidden;background:white}.thumbs button[aria-pressed=true]{border-color:#287e6c}.thumbs img{width:61px;height:61px;object-fit:cover;display:block}.price{font-size:28px;font-weight:700;color:#125d4c}.desc{white-space:pre-wrap;overflow-wrap:anywhere}.description-img{display:block;width:min(100%,740px);margin:12px auto;border-radius:6px}dl{margin:0}dt{font-weight:650}dd{margin:3px 0 12px;overflow-wrap:anywhere}a{color:#125d4c}details{border-top:1px solid #dbe2df;padding:12px 0}summary{cursor:pointer;font-weight:650}
 @media(max-width:640px){.bar div,main{padding:14px}.filters,.detail{grid-template-columns:1fr}.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.summary{padding:10px}.modal{padding:14px}}
-.avito-description{margin-top:24px}.avito-description p{white-space:pre-wrap;overflow-wrap:anywhere}
+.avito-description{margin-bottom:12px}.avito-description summary{font-size:1.15rem}.avito-description p{white-space:pre-wrap;overflow-wrap:anywhere}
 </style>
 <script defer src="products.js"></script>
 <script defer src="ru.js"></script>
@@ -229,17 +229,20 @@ document.addEventListener('DOMContentLoaded', () => {
    }
    return list;
  }
- function avitoDescription(row, sku) {
+ function avitoDescription(row, sku, expanded) {
    const {description}=window.catalogAvito.listingFor(row,sku);
-   const section=el('section',null,'avito-description');
-   section.append(el('h2','Описание для Авито'),
-     el('p',description||'Описание пока не добавлено.'));
+   const section=details('Описание для Авито',el('p',description||'Тексты подготовит Руслан.'));
+   section.id='avito-description';
+   section.className='avito-description';
+   section.open=expanded;
    return section;
  }
  function open(row, selectedIndex=0, restoreFocus=false) {
    const sku=row.skus?.[selectedIndex];
    let picker;
    const [name, fits, note, skuNames, article, translatedDescription] = translation(row);
+   const descriptionExpanded=restoreFocus ? ($('avito-description')?.open ?? true) : true;
+   const compatibilityExpanded=restoreFocus && Boolean($('compatibility')?.open);
    const container=$('product'); container.replaceChildren();
    const layout=el('div',null,'detail'), gallery=el('div'), info=el('div');
    const title=el('h2',name); title.id='product-title';
@@ -255,7 +258,7 @@ document.addEventListener('DOMContentLoaded', () => {
      thumbs.append(btn);
    });
    gallery.append(main,thumbs);
-   info.append(el('div','1688 · '+row.id),title);
+   info.append(el('div','1688 · '+row.id),title,avitoDescription(row,sku,descriptionExpanded));
    if(hasVariants(row)){
      const label=el('label','Исполнение ');
      picker=el('select');
@@ -273,9 +276,14 @@ document.addEventListener('DOMContentLoaded', () => {
    info.append(cardCosts(row,[{sku}]));
    const notice=checkNotice(productOptions.get(row)[selectedIndex].questions);
    if(notice) info.append(notice);
-   if(fits) info.append(el('p','Совместимость по карточке продавца: '+fits));
-   if(!window.ru[row.id]) info.append(el('p','Название и характеристики переведены автоматически. Совместимость требует сверки.'));
-   if(note) info.append(el('p',note));
+   const compatibility=el('div');
+   if(fits) compatibility.append(el('p','По данным продавца: '+fits));
+   else compatibility.append(el('p','Совместимость нужно уточнить по выбранному исполнению.'));
+   if(note) compatibility.append(el('p',note));
+   const compatibilityDetails=details('Совместимость',compatibility);
+   compatibilityDetails.id='compatibility';
+   compatibilityDetails.open=compatibilityExpanded;
+   info.append(compatibilityDetails);
    if(row.moq) info.append(el('p','Минимальный заказ: '+row.moq+' '+(translate(row.unit) || 'шт.')));
    if(!sku && row.unit_weight_kg>0) info.append(el('p','Вес с упаковкой по данным продавца: '+money(row.unit_weight_kg)+' кг'+(row.unit_weight_kg<0.1?' · требует проверки':'')));
    if(row.price_tiers?.length) {
@@ -333,7 +341,7 @@ document.addEventListener('DOMContentLoaded', () => {
    if(sku && (hasVariants(row)||row.displayTitle)){
      container.append(el('h2','Выбранное исполнение'),el('p',skuLabel(row,sku,selectedIndex)));
    }
-   container.append(avitoDescription(row,sku),el('h2','Описание продавца'));
+   container.append(el('h2','Описание продавца'));
    if(row.displayTitle) container.append(el('p','Описание и изображения продавца относятся к общему объявлению 1688.'));
    if(translatedDescription) container.append(el('p',translatedDescription,'desc'));
    else if(row.description) container.append(el('p',translate(row.description),'desc'));
