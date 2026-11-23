@@ -84,6 +84,10 @@ document.addEventListener('DOMContentLoaded', () => {
  const {expand, minimumOrder, hasVariants, unitPrice, packageFor}=window.catalogOffers;
  const products=window.products.flatMap(expand);
  const avitoQueue=window.catalogAvitoQueue;
+ const isQueuedForAvito=row=>{
+   const part=window.catalogAvitoQueueParts?.get(row.id);
+   return avitoQueue.has(row.id) && (!part || row.category===part);
+ };
  const avitoQueueFilter=$('avito-queue-filter');
  const avitoQueueTag=()=>el('span','К размещению для Авито','avito-queue-tag');
  const material=$('material');
@@ -266,7 +270,7 @@ document.addEventListener('DOMContentLoaded', () => {
    });
    gallery.append(main,thumbs);
    info.append(el('div','1688 · '+row.id),title);
-   if(avitoQueue.has(row.id)) info.append(avitoQueueTag());
+   if(isQueuedForAvito(row)) info.append(avitoQueueTag());
    info.append(avitoDescription(row,sku,descriptionExpanded));
    if(hasVariants(row)){
      const label=el('label','Исполнение ');
@@ -365,7 +369,7 @@ document.addEventListener('DOMContentLoaded', () => {
    const terms=search.value.toLowerCase().trim().split(/\s+/).filter(Boolean);
    const onlyNeedsCheck=$('needs-check').checked;
    const results=products.flatMap(row=>{
-     if(avitoQueueFilter.checked && !avitoQueue.has(row.id)) return [];
+     if(avitoQueueFilter.checked && !isQueuedForAvito(row)) return [];
      if(selectedCategory && productCategories.get(row)!==selectedCategory) return [];
      const text=row.search+' '+translation(row).flat().join(' ').toLowerCase()+' '+(row.skus??[]).map((sku,index)=>skuLabel(row,sku,index)).join(' ').toLowerCase();
      if(!terms.every(term=>text.includes(term)||text.includes(brands[term]??term))) return [];
@@ -384,7 +388,7 @@ document.addEventListener('DOMContentLoaded', () => {
      const card=el('button',null,'card'); card.type='button';
      const summary=el('span',null,'summary');
      summary.append(el('span',translation(row)[0],'name'),el('b',priceLabel(row,undefined,options)));
-     if(avitoQueue.has(row.id)) summary.append(avitoQueueTag());
+     if(isQueuedForAvito(row)) summary.append(avitoQueueTag());
      const notice=checkNotice(questions,true);
      if(notice) summary.append(notice);
      summary.append(cardCosts(row,options),el('small',row.id));
