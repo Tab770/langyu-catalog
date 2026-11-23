@@ -17,6 +17,7 @@ h1{font-size:clamp(34px,6vw,64px);letter-spacing:-.065em;line-height:1;margin:30
 dialog{border:0;border-radius:14px;padding:0;width:min(960px,calc(100% - 24px));max-height:90vh;color:inherit;box-shadow:0 20px 80px #0005}dialog::backdrop{background:#12231fbb}.modal{padding:24px}.close{position:sticky;top:8px;float:right;z-index:1;background:#12231f;color:white;border:0;border-radius:8px;padding:9px 13px}.detail{clear:both;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px}.photo{width:100%;max-height:420px;object-fit:contain;background:#eef1f0;border-radius:8px}.thumbs{display:flex;flex-wrap:wrap;gap:7px;margin-top:8px}.thumbs button{padding:0;border:2px solid transparent;border-radius:7px;overflow:hidden;background:white}.thumbs button[aria-pressed=true]{border-color:#287e6c}.thumbs img{width:61px;height:61px;object-fit:cover;display:block}.price{font-size:28px;font-weight:700;color:#125d4c}.desc{white-space:pre-wrap;overflow-wrap:anywhere}.description-img{display:block;width:min(100%,740px);margin:12px auto;border-radius:6px}dl{margin:0}dt{font-weight:650}dd{margin:3px 0 12px;overflow-wrap:anywhere}a{color:#125d4c}details{border-top:1px solid #dbe2df;padding:12px 0}summary{cursor:pointer;font-weight:650}
 @media(max-width:640px){.bar div,main{padding:14px}.filters,.detail{grid-template-columns:1fr}.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.summary{padding:10px}.modal{padding:14px}}
 .avito-description{margin-bottom:12px}.avito-description summary{font-size:1.15rem}.avito-description p{white-space:pre-wrap;overflow-wrap:anywhere}
+.avito-queue-tag{display:inline-block;justify-self:start;width:fit-content;max-width:100%;padding:3px 8px;border-radius:6px;background:#dcefe7;color:#114c3d;font-size:13px;font-weight:650}
 </style>
 <script defer src="products.js"></script>
 <script defer src="ru.js"></script>
@@ -25,6 +26,7 @@ dialog{border:0;border-radius:14px;padding:0;width:min(960px,calc(100% - 24px));
 <script defer src="offers.js"></script>
 <script defer src="materials.js"></script>
 <script defer src="avito.js"></script>
+<script defer src="avito-queue.js"></script>
 </head>
 <body>
 <header class="bar"><div><strong>LANGYU</strong><span>Автодетали · локальная витрина</span></div></header>
@@ -34,6 +36,7 @@ dialog{border:0;border-radius:14px;padding:0;width:min(960px,calc(100% - 24px));
  <div id="categories" class="categories" role="group" aria-label="Категории товаров"></div>
  <div class="filters"><input id="search" type="search" aria-label="Поиск товаров" placeholder="Название, модель авто или ID"><select id="order" aria-label="Сортировка"><option value="">По умолчанию</option><option value="asc">Цена по возрастанию</option><option value="desc">Цена по убыванию</option></select></div>
  <label class="material-filter">Материал <select id="material"><option value="">Все материалы</option></select></label>
+ <label class="check-filter"><input id="avito-queue-filter" type="checkbox"> К размещению для Авито</label>
  <label class="check-filter"><input id="needs-check" type="checkbox"> Только карточки с данными на уточнение</label>
  <p id="count" class="count" aria-live="polite"></p>
  <section id="grid" class="grid" aria-label="Товары"></section>
@@ -80,6 +83,9 @@ document.addEventListener('DOMContentLoaded', () => {
  }
  const {expand, minimumOrder, hasVariants, unitPrice, packageFor}=window.catalogOffers;
  const products=window.products.flatMap(expand);
+ const avitoQueue=window.catalogAvitoQueue;
+ const avitoQueueFilter=$('avito-queue-filter');
+ const avitoQueueTag=()=>el('span','К размещению для Авито','avito-queue-tag');
  const material=$('material');
  const productOptions=new Map(products.map(row=>[row,window.catalogMaterials.options(row)]));
  const availableMaterials=new Set([...productOptions.values()].flatMap(options=>options.flatMap(option=>option.materials)));
@@ -259,7 +265,9 @@ document.addEventListener('DOMContentLoaded', () => {
      thumbs.append(btn);
    });
    gallery.append(main,thumbs);
-   info.append(el('div','1688 · '+row.id),title,avitoDescription(row,sku,descriptionExpanded));
+   info.append(el('div','1688 · '+row.id),title);
+   if(avitoQueue.has(row.id)) info.append(avitoQueueTag());
+   info.append(avitoDescription(row,sku,descriptionExpanded));
    if(hasVariants(row)){
      const label=el('label','Исполнение ');
      picker=el('select');
@@ -357,6 +365,7 @@ document.addEventListener('DOMContentLoaded', () => {
    const terms=search.value.toLowerCase().trim().split(/\s+/).filter(Boolean);
    const onlyNeedsCheck=$('needs-check').checked;
    const results=products.flatMap(row=>{
+     if(avitoQueueFilter.checked && !avitoQueue.has(row.id)) return [];
      if(selectedCategory && productCategories.get(row)!==selectedCategory) return [];
      const text=row.search+' '+translation(row).flat().join(' ').toLowerCase()+' '+(row.skus??[]).map((sku,index)=>skuLabel(row,sku,index)).join(' ').toLowerCase();
      if(!terms.every(term=>text.includes(term)||text.includes(brands[term]??term))) return [];
@@ -375,6 +384,7 @@ document.addEventListener('DOMContentLoaded', () => {
      const card=el('button',null,'card'); card.type='button';
      const summary=el('span',null,'summary');
      summary.append(el('span',translation(row)[0],'name'),el('b',priceLabel(row,undefined,options)));
+     if(avitoQueue.has(row.id)) summary.append(avitoQueueTag());
      const notice=checkNotice(questions,true);
      if(notice) summary.append(notice);
      summary.append(cardCosts(row,options),el('small',row.id));
@@ -408,6 +418,7 @@ document.addEventListener('DOMContentLoaded', () => {
  }
  more.onclick=loadMore;
  material.addEventListener('change',reset);
+ avitoQueueFilter.addEventListener('change',reset);
  $('needs-check').addEventListener('change',reset);
  search.addEventListener('input',reset); order.addEventListener('change',reset); render();
 });
