@@ -4,7 +4,7 @@
   // description using its original SKU name as the key.
   const listings = {};
   const rates = {rate: 15, usdRate: 100, usdPerM3: 300};
-  const markup = 0.25;
+  const goodsMultiplier = 2;
   const priceIncrementRub = 100;
 
   function listingFor(row, sku) {
@@ -35,7 +35,7 @@
       description: variant?.description ?? listing?.description ?? '',
       priceRub: totalRub===null ? null : Math.round(totalRub),
       avitoPriceRub: totalRub===null ? null
-        : Math.round(totalRub * (1 + markup) / priceIncrementRub) * priceIncrementRub,
+        : Math.round((goodsRub * goodsMultiplier + shipping) / priceIncrementRub) * priceIncrementRub,
     };
   }
 
